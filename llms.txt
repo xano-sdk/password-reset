@@ -1,0 +1,476 @@
+# @xano-sdk/password-reset
+
+> Token-based password reset for a Xano SDK workspace: a single-use token table,
+> three public endpoints, and the reset email sent with `s.util.send_email`
+> through Resend or Xano's built-in mailer.
+> Registers one table (`password_reset_token`), one API group (`Password Reset`), and three
+> endpoints (`POST password_reset/request`, `/confirm`, `/validate`) onto a consumer's
+> workspace. There is no runtime: every export is a typed def object, and the consumer's
+> `Xano` instance does all encoding at `export()`.
+
+**Authentication is not included.** This package resets a password on a table you
+already have. Pair it with `@xano-sdk/auth`, or with your own signup/login stack -
+it depends on neither.
+
+## Install
+
+```bash
+npm install @xano-sdk/password-reset @xano/sdk
+```
+
+`@xano/sdk` is a **peer dependency**, range `>=1.0.0 <2.0.0` - one shared copy only, or the
+statement and kind registries fork. This package is tested against **1.0.0** exactly:
+that is the version its golden bundle fixture was generated against.
+
+What the golden fixture does and does not cover: it freezes the exact bytes this module
+encodes to, so a peer bump that changes the encoding fails here rather than in your
+workspace. It does **not** cover what the ENGINE does with those bytes - mail delivery and
+the Resend account's own rules are outside it, and need a live probe.
+
+`xanosdk marketplace install @xano-sdk/password-reset` (and `xanosdk init --marketplace`) installs
+the package but does not write the `registerPasswordReset` call: it needs `authTable`, `resetUrl`
+and `fromEmail`, which only you can answer. `init --marketplace` leaves a commented call in
+`xano/index.ts` naming the package; fill it in as in the Quickstart below.
+
+Set the Resend key as a **workspace environment variable** named by `apiKeyEnv`
+(default `RESEND_API_KEY`). It is read server-side with `env()`, so it is never in
+the bundle and cannot reach a frontend build. Declare the NAME with an empty value and keep
+the VALUE in the gitignored `xano/.env`; `xanosdk env set RESEND_API_KEY` (value on stdin)
+changes the live value without a deploy:
+
+```ts
+import { Xano, workspaceConfig } from "@xano/sdk";
+const app = new Xano().registerWorkspace(workspaceConfig({ name: "my-app", env: { RESEND_API_KEY: "" } }));
+```
+
+⚠ Once a workspace config declares ANY env var, `export()` warns (and `--strict` fails) on every
+`env()` name it does not declare. This package reads `RESEND_API_KEY` (or your `apiKeyEnv`),
+plus `APP_URL` if you pass `resetUrl: env("APP_URL")` - declare each one you use. There is
+nothing to configure for `emailProvider: "xano"`.
+
+## Quickstart
+
+```ts
+// xano/index.ts
+import { workspace, table, f } from "@xano/sdk";
+import { registerPasswordReset } from "@xano-sdk/password-reset";
+
+// Your auth table. @xano-sdk/password-reset never declares one - it points at yours.
+const userTable = table({
+  name: "user",
+  auth: true,
+  schema: { email: f.email({ required: true }), password: f.password({ required: true }) },
+  index: [{ type: "unique", fields: [{ name: "email" }] }],
+});
+
+const app = workspace("my-app").registerTables([userTable]);
+
+// registerPasswordReset RETURNS the def set. It is the only route to the registered defs.
+const reset = registerPasswordReset(app, {
+  authTable: userTable,
+  resetUrl: "https://app.example.com/reset",   // YOUR page. The email links here.
+  fromEmail: "no-reply@your-verified-domain.com",
+  canonical: "password_reset",
+});
+
+export default app;
+```
+
+```bash
+npx xanosdk export ./xano/index.ts --strict   # compile and check; writes xano/xano.lock beside the entry - commit it
+npx xanosdk deploy ./xano/index.ts            # a live ephemeral backend to call
+```
+
+The flow, end to end:
+
+1. The user submits their address to `POST password_reset/request`.
+2. This module mints a random UUID (v4) token, stores it with an expiry, and mails
+   `<resetUrl>?token=<token>`.
+3. Your page at `resetUrl` reads `?token=`, optionally calls
+   `POST password_reset/validate` to show "this link has expired" before the form,
+   and posts the token plus the new password to `POST password_reset/confirm`.
+4. The user logs in through your ordinary login endpoint. Confirm mints no session.
+
+## Exports
+
+Values:
+
+- `registerPasswordReset(xano, options)` - builds the def set, registers it, and RETURNS it.
+- `createPasswordReset(options)` - builds the def set WITHOUT registering it.
+- `DEFAULT_RATE_LIMIT`, `MIN_TOKEN_TTL_SECONDS`, `MAX_TOKEN_TTL_SECONDS` - the values the
+  option gate applies and enforces, so you can widen from a known base.
+
+Types (these erase at compile time - `import type` them and pay no bundle bytes):
+
+- `PasswordResetOptions` / `ResolvedPasswordResetOptions`
+- `EmailProvider` (`"resend" | "xano"`), `RateLimitOptions`
+- `PasswordResetToken` - one `password_reset_token` row
+- `PasswordResetDefs` - what one create call minted
+- `RequestResetBody`/`RequestResetResponse`, `ConfirmResetBody`/`ConfirmResetResponse`,
+  `ValidateResetBody`/`ValidateResetResponse`
+
+## Endpoints
+
+All three are **public** - a caller who could authenticate does not need any of them.
+
+| Route | Verb | Input | Response |
+|---|---|---|---|
+| `password_reset/request` | POST | `email` (required) | `{ ok: true }`, always |
+| `password_reset/validate` | POST | `token` (required) | `{ ok: true, expires_at }`, or 400 |
+| `password_reset/confirm` | POST | `token`, `password` (both required, min 8) | `{ ok: true }`, or 400 |
+
+`request` answers `{ ok: true }` for an address with no account, and for one that has
+one. That is deliberate: it is unauthenticated, so anything else lets anyone ask it
+whether anyone else has an account. Do not "improve" it into a 404.
+
+`validate` and `confirm` return ONE message for an unknown token, a spent token and an
+expired one: `"This reset link is not valid. Request a new one."`. Same reason.
+
+**`{ ok: true }` from `request` means the stack ran, NOT that an email was sent.** Nor does
+`send_email`'s own `status: "success"`, which means QUEUED and comes back even for a recipient
+that is not a valid address - it catches a misconfigured statement and nothing else. This
+package deliberately does not branch on it - a caller-visible difference between a failed send and no
+send at all is the enumeration oracle again. Watch your provider's logs. Two failures worth
+recognising: `"Workspace admin not found"` means the built-in `"xano"` mailer was used on an
+ephemeral environment, where it cannot work; `"Missing required field for Send Email."` is
+usually an unset `RESEND_API_KEY`, which the engine does not name.
+
+**`emailProvider: "xano"` delivers ONLY to the workspace admin.** Confirmed by a paired send on
+a live instance: the admin got their copy, a non-admin never did, and both reported
+`status: "success"`. The built-in mailer sends AS the workspace admin, so it can only send TO
+them. A password reset mails whoever asked, so `"xano"` silently delivers nothing to every
+caller who is not the admin. **Ship on `"resend"`.**
+
+`"xano"` is still the right keyless SMOKE TEST, with one condition: the recipient must be the
+workspace admin. If you are the admin of the instance - common when building on your own
+workspace - set `emailProvider: "xano"`, request a reset for your own address, and the mail
+arrives with no account, no key and no domain. If you are not the admin, test against the
+admin's address or use your own Resend key; any other address looks like it worked and
+delivers nothing.
+
+Resend's sandbox sender `onboarding@resend.dev` needs no verified domain and delivers only to
+the address the Resend ACCOUNT is registered under - a good second test, and not a deployment
+sender. For real traffic, verify your own domain in Resend, send from it, and put `resetUrl`
+on it: a shared sandbox sender plus a "Reset your password" subject plus a link to an
+unrelated domain is close to a textbook phishing signature, and gets filtered.
+
+## Options
+
+| Option | Default | Why the default is what it is |
+|---|---|---|
+| `authTable` | **required** | The table whose password is reset. Pass the def HANDLE, not a name - a bare name cannot be resolved to a guid and the column deploys dangling. |
+| `resetUrl` | **required** | Your page. The email links to `<resetUrl>?token=<token>` (`&token=` if it already has a query string). Must be http(s); any other scheme is refused, because the link goes into mail a stranger can cause to be sent. Takes a string (resolved at EXPORT time, so it cannot address a `deploy --static` host) or a `Value` such as `env("APP_URL")`, resolved at REQUEST time - see *On an EPHEMERAL, point `resetUrl` at your local dev server*. |
+| `fromEmail` | **required for Resend** | Resend refuses a sender on an unverified domain, and that failure surfaces at send time - on a real user's reset. Optional for `"xano"`. |
+| `emailProvider` | `"resend"` | `"xano"` is the built-in mailer: no key, no verified sender, no configuration. Right for a prototype and for a test that must not depend on a third-party account. |
+| `apiKeyEnv` | `"RESEND_API_KEY"` | Read server-side with `env()`. Ignored for `"xano"`. |
+| `tokenTtlSeconds` | `3600` | Bounded 60s..7d. A reset token is a bearer credential for one account, so an unbounded lifetime is a second password sitting in an inbox. |
+| `rateLimit` | `{ max: 5, ttl: 900 }` | Every endpoint here is unauthenticated, one SENDS MAIL, and the other two are the brute-force surface for a token that changes a password. `false` is the explicit opt-out; the step stays in the stack, disabled. |
+| `emailSubject` / `emailIntro` / `emailOutro` | sensible English | The default intro names the expiry in minutes. `emailSubject` is also the heading. |
+| `emailFormat` | `"html"` | The styled document. `"text"` for plain text. The engine has ONE `message` field, so an HTML send carries no plain-text alternative. |
+| `emailButtonLabel` | `"Choose a new password"` | HTML only. |
+| `brandName` | unset | Short product name above the heading; the block is omitted entirely when unset. |
+| `brandColor` | `"#18181b"` | Button and link colour, hex only - it lands in a `style` attribute. Button text is white, so a pale accent is unreadable. |
+| `emailColumn` / `passwordColumn` | `"email"` / `"password"` | Checked against `authTable`'s schema at option time, so a wrong name is a sentence rather than a stack trace through the encoder. |
+| `canonical` | unset | Identity belongs to your `xano.lock`. Pin it when you need `getPath()` to resolve in a browser bundle with no lock file. |
+| `history` | `false` | Request history stores the request BODY - here that is a reset token and a plaintext new password. |
+
+## The email
+
+HTML by default: one card, a heading, the intro, a button, the link again as copyable text, and
+the outro under a rule. Table-based with inline styles (Outlook renders through Word's HTML
+engine), and dark mode as a `prefers-color-scheme` override on top of the inline light styles.
+
+The link appears in the document **three** times over - the button's `href`, the fallback
+anchor's `href`, and that anchor's visible text - all joined at runtime by the filter chain.
+Every consumer-supplied string is HTML-escaped into it at build time.
+
+Do not rebuild this document yourself with `c.text(...)` and a template literal: a template
+literal cannot compose a tagged value, so `` c.text(`…${ref("token")}…`) `` type-checks and
+mails `[object Object]`. If you need a different design, change the parts in
+`src/api/email-template.ts` - they are joined around the token, never interpolated.
+
+## Calling the endpoints from a typed client
+
+```ts
+import type { ConfirmResetBody, ConfirmResetResponse } from "@xano-sdk/password-reset";
+
+const res = await fetch(`${XANO_HOST}/api:password_reset/password_reset/confirm`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ token, password } satisfies ConfirmResetBody),
+});
+const done: ConfirmResetResponse = await res.json();
+```
+
+The path's `api:` token is the API group's **canonical**. Pin it through the `canonical`
+option and the path is knowable from source alone; leave it unset and it comes from your
+`xano.lock` after the first export.
+
+No `Authorization` header on any of the three - they are public by design.
+
+## Working with an auth table
+
+`authTable` takes **any** table def handle. This package declares no user table and depends on
+no other package - it points at whatever you already have.
+
+What it requires of that table, and nothing else:
+
+| | |
+|---|---|
+| `table({ auth: true })` | so your login endpoint can mint tokens against it. This module never reads or mints one. |
+| an address column | default `"email"`; rename with `emailColumn`. |
+| an **`f.password()`** column | default `"password"`; rename with `passwordColumn`. |
+
+**The password column must be `f.password()`, and this is checked.** The confirm endpoint
+writes the submitted password as PLAINTEXT and relies on the COLUMN to hash it on write. An
+`f.text()` column would store every reset password in the clear - deploying clean, answering
+200, with no symptom but a readable database - so `resolveOptions` refuses it by name. Both
+column names are checked against the table's schema too, and both are reported at once.
+
+### With `@xano-sdk/auth`
+
+Its defaults are already the ones this module expects, so there is nothing to configure:
+
+```ts
+import { workspace } from "@xano/sdk";
+import { registerAuth, userTable } from "@xano-sdk/auth";
+import { registerPasswordReset } from "@xano-sdk/password-reset";
+
+const app = registerAuth(workspace("my-app"), { canonical: "authn" });
+
+registerPasswordReset(app, {
+  authTable: userTable,                          // auth's own handle - not a name
+  resetUrl: "https://app.example.com/reset",
+  fromEmail: "no-reply@your-verified-domain.com",
+  canonical: "password_reset",
+});
+
+export default app;
+```
+
+Verified on a real consumer install of both packages: the two API groups coexist, no guid
+collides, `auth/signup`, `auth/login` and `auth/me` are untouched, and the token table's `owner`
+resolves to auth's `user` guid.
+
+⚠ `@xano-sdk/auth` is a SINGLETON-shaped module - its api group is a module-level def, shared
+process-wide - so `registerAuth` can be called **once per process**. A test file that builds two
+workspaces both using it fails on the second, with a message about canonicals rather than about
+what you did. `@xano-sdk/password-reset` is factory-shaped and has no such limit.
+
+### With your own auth table
+
+Name the columns if they differ. Nothing else changes:
+
+```ts
+const members = table({
+  name: "member",
+  auth: true,
+  schema: {
+    login_email: f.email({ required: true }),
+    secret: f.password({ required: true }),   // f.password, not f.text
+  },
+  index: [{ type: "unique", fields: [{ name: "login_email" }] }],
+});
+
+registerPasswordReset(app, {
+  authTable: members,
+  emailColumn: "login_email",
+  passwordColumn: "secret",
+  resetUrl: "https://app.example.com/reset",
+  fromEmail: "no-reply@your-verified-domain.com",
+});
+```
+
+Your own login endpoint keeps working unchanged - this module only ever WRITES the password
+column, and it mints no session. After a reset the user signs in through whatever you already
+had.
+
+## Wiring a React frontend
+
+This package ships **no frontend files** - it is def objects only. What follows is the whole
+integration, and it is short on purpose.
+
+You need ONE page. It does two jobs depending on whether the URL carries a `?token=`: without
+one it collects an address; with one it collects a new password. That page's URL is the
+`resetUrl` option, and the email links to `<resetUrl>?token=<token>`.
+
+### On an EPHEMERAL, point `resetUrl` at your local dev server
+
+A string `resetUrl` is resolved at **export** time - it is baked into the email body as a
+build-time constant. `xanosdk deploy --static` mints a **NEW static host on every run**, so on an ephemeral
+environment the link can never address the frontend that is currently serving: deploy N can only
+carry deploy N-1's URL, and there is no ordering that fixes it.
+
+Verified, including the obvious escape route, which does not exist:
+
+```
+deploy --static      -> https://5ndw94-....dev.xano.io   200
+deploy (no --static) -> that same static host now        404   <- the frontend is GONE
+deploy --static      -> https://hfplbv-....dev.xano.io   200   (a different URL again)
+```
+
+A deploy **without** `--static` REMOVES the frontend; it does not leave it alone. So "deploy
+--static to learn the host, then redeploy the backend carrying that host" takes the whole app
+down.
+
+Do this instead:
+
+```ts
+resetUrl: "http://127.0.0.1:5173/",   // your local dev server, against the deployed backend
+```
+
+Run the UI locally against the ephemeral backend and have the page read `?token=` from the app
+root, so no history fallback is needed. Pass the real, stable frontend URL only when you deploy
+to an instance workspace whose frontend URL does not move.
+
+### Or resolve `resetUrl` at REQUEST time
+
+`resetUrl` also takes a `Value`, which the stack reads when the mail is sent rather than when
+the workspace is built:
+
+```ts
+import { env } from "@xano/sdk";
+
+registerPasswordReset(app, { authTable: userTable, resetUrl: env("APP_URL"), fromEmail });
+```
+
+Declare `APP_URL` in `workspaceConfig({ env })`. Once a `--static` deploy has minted its host,
+set the variable on the running backend - no redeploy, so the static host stays up:
+
+```bash
+printf %s "https://<the-static-host>/" | npx xanosdk env set APP_URL
+```
+
+The emailed link then addresses the frontend that is actually serving. Repeat it after every
+`--static` deploy, since each one mints a new host. Three constraints come with the runtime
+form, and NONE of them can be checked at build time:
+
+- **No query string.** The `?`-vs-`&` separator depends on the URL's content, which a compiler
+  cannot read, so the runtime form always appends `?token=`. `https://app.example.com/reset` is
+  fine; `.../reset?ref=email` would produce two `?`.
+- **No scheme check.** The `http:`/`https:` refusal runs on a string only. Whatever the variable
+  holds goes into the mail, so write access to that variable is write access to a link your
+  users are asked to trust.
+- **Not HTML-escaped.** In `emailFormat: "html"` the value lands in an `href` and in the visible
+  link text unescaped - a build-time escape cannot reach a runtime value. A `"` in the variable
+  breaks the attribute.
+
+A plain string stays the right answer wherever the frontend URL is stable: it is validated,
+escaped, and folded into the document, so it emits the identical bundle it always has.
+
+⚠ A `release`/`promote` is **ADD-ONLY** on the workspace environment - it creates a variable that
+does not exist and will not update one that does. Change `APP_URL` with `xanosdk env set`, not by
+releasing again.
+
+`src/lib/passwordReset.ts` - the three calls:
+
+```ts
+// `window.XANO_HOST` is injected into every HTML document by `xanosdk deploy --static` (or
+// `xanosdk publish <dir>`), before the app bundle runs. In local dev nothing injects it, so the fallback answers.
+const HOST = (typeof window !== "undefined" && window.XANO_HOST) || import.meta.env.VITE_XANO_HOST || "";
+
+// The `api:` token is the API group's CANONICAL - the `canonical` option you passed.
+const url = (route: string) => `${HOST}/api:password_reset/password_reset/${route}`;
+
+async function post<T>(route: string, body: unknown): Promise<T> {
+  const res = await fetch(url(route), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await res.json().catch(() => ({}));
+  // Every message this module produces is authored and safe to show a user.
+  if (!res.ok) throw new Error(payload.message ?? "Something went wrong.");
+  return payload as T;
+}
+
+export const requestReset  = (email: string) => post<{ ok: true }>("request", { email });
+export const validateToken = (token: string) => post<{ ok: true; expires_at: number }>("validate", { token });
+export const confirmReset  = (token: string, password: string) => post<{ ok: true }>("confirm", { token, password });
+```
+
+The page, in outline:
+
+```tsx
+const token = new URLSearchParams(window.location.search).get("token");
+
+// No token -> collect an address, then show the SAME confirmation either way.
+// With a token -> validateToken() on mount, THEN render the password form.
+// On success -> send them to your ordinary login page.
+```
+
+Type the bodies from this package rather than by hand - the types erase at compile time, so
+`import type` costs no bundle bytes:
+
+```ts
+import type { ConfirmResetBody, ValidateResetResponse } from "@xano-sdk/password-reset";
+```
+
+⚠ `import type` only. Importing a def VALUE for `getPath()` pulls the SDK runtime into the
+browser bundle - a ~267 kB (~65 kB gzipped) floor for the first def. For paths as plain data, run
+`xanosdk routes ./xano/index.ts --emit xano/routes.gen.ts` and import from that instead.
+
+Five rules for the page. Each one is a property of the endpoints, not a preference:
+
+1. **After `requestReset`, show the same screen for every address.** Do not check whether the
+   account exists, and do not say "no account found" - the endpoint refuses to tell you
+   precisely so that the page cannot leak it. Say "if that address has an account, a link is on
+   its way".
+2. **Call `validateToken` on mount, before rendering the password fields.** Otherwise the user
+   types a new password twice and only then learns the link expired. That endpoint exists for
+   this, and it does not spend the token.
+3. **The token goes in a POST body and nowhere else.** Do not store it, do not put it in a
+   header, do not write it back into the URL or into analytics. Read it once from the query
+   string and hold it in memory.
+4. **`confirm` mints no session.** Resetting a password is not logging in. Send the user to your
+   login page afterwards; do not fake a signed-in state.
+5. **Show the server's message verbatim on a rejection.** All three rejections share one
+   sentence by design - do not map them to more specific ones in the UI, which would undo it.
+
+CORS needs no configuration: the engine answers the preflight from any origin, so a frontend on
+a static host and a backend on the instance work together as-is.
+
+## Constraints for agents (read before using)
+
+- **Call `registerPasswordReset` ONCE per `Xano` instance.** A second call is refused by name. It
+  would otherwise register defs sharing names and fail at `export()` naming neither call site.
+- **Pass `authTable` as a def handle**, never a string. `f.tableRef` resolves the target's guid
+  eagerly, at column-construction time.
+- **Register your auth table yourself.** This package points at it and does not own it, so
+  `export()` refuses until you have registered it too.
+- **Keep the value `registerPasswordReset` returns.** It is the only route to the registered defs;
+  this package exports no module-level def.
+- **The `request` endpoint's constant `{ ok: true }` is a security property, not a stub.**
+  Making it 404 on an unknown address turns it into an account enumeration oracle.
+- **Do not narrow the three rejection messages on `confirm`/`validate` into distinct ones.**
+  "Not found", "expired" and "already used" are an oracle about tokens the caller does not hold.
+- **Do not add a token to the `confirm` response.** Resetting a password is not logging in; the
+  user goes through your ordinary login endpoint next.
+- **Tell the consumer to turn OFF click tracking on the sending domain.** Every major provider
+  rewrites links through a tracking domain with the original URL - and the TOKEN - encoded in the
+  path (`…awstrack.me/L0/https:%2F%2F…%3Ftoken=<token>/1/…`, observed in a real Resend send).
+  That both breaks the link for anyone running a blocker AND hands a bearer credential for the
+  account to a third party, which undoes the internal column, the single use and the expiry at a
+  stroke. This module cannot prevent it - `s.util.send_email` has no per-send tracking flag - so
+  it is a setting the consumer must change, and one worth raising unprompted. Same for a URL
+  shortener or a "safe links" gateway.
+- **Set `apiKeyEnv`'s variable in the WORKSPACE environment, never in the bundle.** Declare the
+  name empty in `workspaceConfig({ env })`, keep the value in `xano/.env`, and change it live with
+  `xanosdk env set`. A static host serves everything injected into a frontend build
+  (`--static-env` included), so a key there is public.
+- **`rateLimit: false` is an opt-out you must be able to defend.** The request endpoint sends
+  mail on an unauthenticated call - it costs money and it lands in someone else's inbox.
+- **Do not pin a guid, and do not pass a `canonical` you are not prepared to keep.** A canonical
+  is a public URL token; changing it moves every path in the wild.
+- **Request history is OFF, deliberately.** It stores request bodies. Do not turn it on to debug
+  and leave it on.
+- **Identity is yours, not this package's.** Commit your `xano.lock`: object guids derive from
+  `(type, name)`, so a rename without the lock makes the engine DELETE and recreate the object
+  rather than renaming it - losing its rows.
+- **Never re-export this module's defs from your own `register*` function.** Register them once,
+  on one instance.
+
+## Docs
+
+- [README.md](README.md) - the full reference, and the read-before-production list.
+- [AGENTS.md](AGENTS.md) - for an agent working ON this repo, not consuming it.

@@ -1,0 +1,2353 @@
+{
+  "app": "xano",
+  "version": "1.03",
+  "type": "workspace",
+  "payload": {
+    "partial": false,
+    "workspace": {
+      "name": "xts-password-reset-golden",
+      "description": "",
+      "canonical": "",
+      "use_xdo": false,
+      "preferences": {
+        "allow_push": false,
+        "track_performance": true,
+        "use_internal_docs": false
+      },
+      "swagger": false,
+      "env": [],
+      "settings": {
+        "ai_enabled": false,
+        "ai_settings": {
+          "providers": {
+            "google": {
+              "model": "",
+              "api_key": ""
+            },
+            "openai": {
+              "model": "",
+              "api_key": ""
+            },
+            "anthropic": {
+              "model": "",
+              "api_key": ""
+            },
+            "azure-openai": {
+              "model": "",
+              "api_key": "",
+              "base_url": "",
+              "api_version": ""
+            }
+          },
+          "default_provider": "free"
+        },
+        "hide_xano_agent": false
+      },
+      "guid": "8c8a5d016f9d0fc55aa48ebd4ae5e16b"
+    },
+    "dbo": [
+      {
+        "name": "golden_user",
+        "description": "",
+        "docs": "",
+        "auth": true,
+        "install": false,
+        "schema": [
+          {
+            "name": "id",
+            "type": "int",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          },
+          {
+            "name": "created_at",
+            "type": "epochms",
+            "_xsid": "",
+            "nullable": false,
+            "default": "now",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": false,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "private",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          },
+          {
+            "name": "email",
+            "type": "email",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          },
+          {
+            "name": "password",
+            "type": "password",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "internal",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          }
+        ],
+        "index": [
+          {
+            "name": "",
+            "lang": "",
+            "type": "primary",
+            "fields": [
+              {
+                "name": "id",
+                "op": ""
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            }
+          },
+          {
+            "name": "",
+            "lang": "",
+            "type": "btree",
+            "fields": [
+              {
+                "name": "created_at",
+                "op": "desc"
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            }
+          },
+          {
+            "name": "",
+            "lang": "",
+            "type": "btree|unique",
+            "fields": [
+              {
+                "name": "email",
+                "op": ""
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            }
+          }
+        ],
+        "autocomplete": [],
+        "external": {
+          "source": "",
+          "id": ""
+        },
+        "views": [],
+        "tag": [],
+        "sql_name": "",
+        "use_xdo": false,
+        "market_item": {
+          "id": 0,
+          "version": 0,
+          "guid": ""
+        },
+        "guid": "b25f08616176d89e63786103b0fc2aa7",
+        "import": {
+          "mode": "standard"
+        }
+      },
+      {
+        "name": "password_reset_token",
+        "description": "One outstanding password-reset link. Single-use, and expires.",
+        "docs": "",
+        "auth": false,
+        "install": false,
+        "schema": [
+          {
+            "name": "id",
+            "type": "int",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          },
+          {
+            "name": "created_at",
+            "type": "epochms",
+            "_xsid": "",
+            "nullable": false,
+            "default": "now",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": false,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "private",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          },
+          {
+            "name": "owner",
+            "type": "int",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [
+              {
+                "name": "@",
+                "disabled": false,
+                "arg": [
+                  "dbo=b25f08616176d89e63786103b0fc2aa7"
+                ]
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": "The user whose password this token resets."
+          },
+          {
+            "name": "token",
+            "type": "text",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": true,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "internal",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": "The secret in the emailed link. Never returned by any endpoint."
+          },
+          {
+            "name": "expires_at",
+            "type": "epochms",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": "Epoch-ms after which the confirm endpoint refuses this token."
+          },
+          {
+            "name": "used_at",
+            "type": "epochms",
+            "_xsid": "",
+            "nullable": true,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": false,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": "Epoch-ms the token was spent. Non-null means it is finished."
+          }
+        ],
+        "index": [
+          {
+            "name": "",
+            "lang": "",
+            "type": "primary",
+            "fields": [
+              {
+                "name": "id",
+                "op": ""
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            }
+          },
+          {
+            "name": "",
+            "lang": "",
+            "type": "btree",
+            "fields": [
+              {
+                "name": "created_at",
+                "op": "desc"
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            }
+          },
+          {
+            "name": "",
+            "lang": "",
+            "type": "btree|unique",
+            "fields": [
+              {
+                "name": "token",
+                "op": ""
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            }
+          },
+          {
+            "name": "",
+            "lang": "",
+            "type": "btree",
+            "fields": [
+              {
+                "name": "owner",
+                "op": "asc"
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            }
+          }
+        ],
+        "autocomplete": [],
+        "external": {
+          "source": "",
+          "id": ""
+        },
+        "views": [],
+        "tag": [],
+        "sql_name": "",
+        "use_xdo": false,
+        "market_item": {
+          "id": 0,
+          "version": 0,
+          "guid": ""
+        },
+        "guid": "4bf5cc55bab9c53a968c6ed94c13849d",
+        "import": {
+          "mode": "standard"
+        }
+      }
+    ],
+    "addon": [],
+    "function": [],
+    "middleware": [],
+    "trigger": [],
+    "task": [],
+    "query": [
+      {
+        "name": "password_reset/request",
+        "description": "Send a password reset link to an address, if it has an account.",
+        "docs": "",
+        "api_enabled": true,
+        "auth": false,
+        "response_type": "standard",
+        "verb": "POST",
+        "disabled": false,
+        "app": {
+          "id": "6b4b01c5ccaa3c9dce8634a06ddd5ef4"
+        },
+        "cache": {
+          "active": false,
+          "ttl": 3600,
+          "input": true,
+          "auth": true,
+          "datasource": true,
+          "ip": false,
+          "headers": [],
+          "env": []
+        },
+        "output": [],
+        "middleware": {
+          "pre_customize": false,
+          "post_customize": false,
+          "pre": [],
+          "post": []
+        },
+        "tag": [],
+        "history": {
+          "inherit": true,
+          "enabled": true,
+          "limit": 100
+        },
+        "input": [
+          {
+            "name": "email",
+            "type": "email",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [
+              {
+                "name": "trim",
+                "disabled": false,
+                "arg": []
+              },
+              {
+                "name": "lower",
+                "disabled": false,
+                "arg": []
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          }
+        ],
+        "result": [
+          {
+            "filters": [],
+            "name": "ok",
+            "tag": "const:bool",
+            "value": "true",
+            "_xsid": "",
+            "disabled": false
+          }
+        ],
+        "run": [
+          {
+            "as": "",
+            "name": "mvp:redis_ratelimit",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "key",
+                "value": "pwreset:request-ip:",
+                "tag": "const",
+                "filters": [
+                  {
+                    "name": "concat",
+                    "disabled": false,
+                    "arg": [
+                      {
+                        "value": "$remote_ip",
+                        "tag": "setting",
+                        "filters": []
+                      }
+                    ]
+                  }
+                ],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "max",
+                "value": "3",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "ttl",
+                "value": "60",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "error",
+                "value": "Too many password reset attempts. Wait a few minutes and try again.",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {},
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:redis_ratelimit",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "key",
+                "value": "pwreset:request-email:",
+                "tag": "const",
+                "filters": [
+                  {
+                    "name": "concat",
+                    "disabled": false,
+                    "arg": [
+                      {
+                        "value": "email",
+                        "tag": "input",
+                        "filters": []
+                      }
+                    ]
+                  }
+                ],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "max",
+                "value": "3",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "ttl",
+                "value": "60",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "error",
+                "value": "Too many password reset attempts. Wait a few minutes and try again.",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {},
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "user",
+            "name": "mvp:dbo_getby",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "field_name",
+                "value": "email",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "field_value",
+                "value": "email",
+                "tag": "input",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [
+                {
+                  "name": "id",
+                  "children": []
+                },
+                {
+                  "name": "email",
+                  "children": []
+                }
+              ],
+              "filters": [],
+              "customize": true
+            },
+            "context": {
+              "dbo": {
+                "id": "b25f08616176d89e63786103b0fc2aa7"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:conditional",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "expr": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": "!=",
+                      "left": {
+                        "operand": "user",
+                        "tag": "var",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "null",
+                        "tag": "const:null",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "if": {
+                "run": [
+                  {
+                    "as": "token",
+                    "name": "mvp:uuid4",
+                    "_xsid": "",
+                    "addon": [],
+                    "input": [],
+                    "mocks": {},
+                    "output": {
+                      "items": [],
+                      "filters": [],
+                      "customize": false
+                    },
+                    "context": {},
+                    "runtime": null,
+                    "disabled": false,
+                    "description": "",
+                    "settings_registry": null
+                  },
+                  {
+                    "as": "reset",
+                    "name": "mvp:dbo_add",
+                    "_xsid": "",
+                    "addon": [],
+                    "input": [
+                      {
+                        "name": "id",
+                        "value": "null",
+                        "tag": "const:null",
+                        "filters": [],
+                        "ignore": true,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "created_at",
+                        "value": "now",
+                        "tag": "const",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "owner",
+                        "value": "user.id",
+                        "tag": "var",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "token",
+                        "value": "token",
+                        "tag": "var",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "expires_at",
+                        "value": "now",
+                        "tag": "const:epochms",
+                        "filters": [
+                          {
+                            "name": "add",
+                            "disabled": false,
+                            "arg": [
+                              {
+                                "value": "900000",
+                                "tag": "const:int",
+                                "filters": []
+                              }
+                            ]
+                          }
+                        ],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "used_at",
+                        "value": "null",
+                        "tag": "const:null",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      }
+                    ],
+                    "mocks": {},
+                    "output": {
+                      "items": [],
+                      "filters": [],
+                      "customize": false
+                    },
+                    "context": {
+                      "dbo": {
+                        "id": "4bf5cc55bab9c53a968c6ed94c13849d"
+                      }
+                    },
+                    "runtime": null,
+                    "disabled": false,
+                    "description": "",
+                    "settings_registry": null
+                  },
+                  {
+                    "as": "sent",
+                    "name": "mvp:send_email",
+                    "_xsid": "",
+                    "addon": [],
+                    "input": [
+                      {
+                        "name": "api_key",
+                        "value": "GOLDEN_RESEND_KEY",
+                        "tag": "setting",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "service_provider",
+                        "value": "resend",
+                        "tag": "const",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "subject",
+                        "value": "Choose a new password",
+                        "tag": "const",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "message",
+                        "value": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"color-scheme\" content=\"light dark\">\n<meta name=\"supported-color-schemes\" content=\"light dark\">\n<title>Choose a new password</title>\n<style>\n  @media (prefers-color-scheme: dark) {\n    .pw-bg { background: #09090b !important; }\n    .pw-card { background: #18181b !important; border-color: #27272a !important; }\n    .pw-head, .pw-url { color: #fafafa !important; }\n    .pw-body, .pw-foot { color: #a1a1aa !important; }\n    .pw-rule { border-color: #27272a !important; }\n  }\n  @media (max-width: 480px) {\n    .pw-card { padding: 28px 22px !important; }\n  }\n</style>\n</head>\n<body class=\"pw-bg\" style=\"margin:0;padding:0;background:#f4f4f5;\">\n<div style=\"display:none;font-size:1px;color:#f4f4f5;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;\">Choose a new password</div>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"pw-bg\" style=\"background:#f4f4f5;\">\n<tr><td align=\"center\" style=\"padding:40px 16px;\">\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"max-width:480px;\">\n<tr><td class=\"pw-card\" style=\"background:#ffffff;border:1px solid #e4e4e7;border-radius:14px;padding:36px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\">\n<p style=\"margin:0 0 22px;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#7c3aed;\">Golden &amp; Co &lt;Ltd&gt;</p><h1 class=\"pw-head\" style=\"margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:650;color:#18181b;\">Choose a new password</h1>\n<p class=\"pw-body\" style=\"margin:0 0 26px;font-size:15px;line-height:1.6;color:#52525b;\">Golden intro.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"border-radius:9px;background:#7c3aed;\">\n<a href=\"https://golden.example.com/reset?lang=en&amp;token=",
+                        "tag": "const",
+                        "filters": [
+                          {
+                            "name": "concat",
+                            "disabled": false,
+                            "arg": [
+                              {
+                                "value": "token",
+                                "tag": "var",
+                                "filters": []
+                              }
+                            ]
+                          },
+                          {
+                            "name": "concat",
+                            "disabled": false,
+                            "arg": [
+                              {
+                                "value": "\" style=\"display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;line-height:1;color:#ffffff;text-decoration:none;border-radius:9px;\">Pick a new one</a>\n</td></tr></table>\n<p class=\"pw-body\" style=\"margin:26px 0 6px;font-size:13px;line-height:1.6;color:#71717a;\">Or paste this link into your browser:</p>\n<p class=\"pw-url\" style=\"margin:0;font-size:13px;line-height:1.6;word-break:break-all;\"><a href=\"https://golden.example.com/reset?lang=en&amp;token=",
+                                "tag": "const",
+                                "filters": []
+                              }
+                            ]
+                          },
+                          {
+                            "name": "concat",
+                            "disabled": false,
+                            "arg": [
+                              {
+                                "value": "token",
+                                "tag": "var",
+                                "filters": []
+                              }
+                            ]
+                          },
+                          {
+                            "name": "concat",
+                            "disabled": false,
+                            "arg": [
+                              {
+                                "value": "\" style=\"color:#7c3aed;text-decoration:underline;\">https://golden.example.com/reset?lang=en&amp;token=",
+                                "tag": "const",
+                                "filters": []
+                              }
+                            ]
+                          },
+                          {
+                            "name": "concat",
+                            "disabled": false,
+                            "arg": [
+                              {
+                                "value": "token",
+                                "tag": "var",
+                                "filters": []
+                              }
+                            ]
+                          },
+                          {
+                            "name": "concat",
+                            "disabled": false,
+                            "arg": [
+                              {
+                                "value": "</a></p>\n<hr class=\"pw-rule\" style=\"border:none;border-top:1px solid #e4e4e7;margin:28px 0 0;\">\n<p class=\"pw-foot\" style=\"margin:20px 0 0;font-size:13px;line-height:1.6;color:#71717a;\">Golden outro.</p>\n</td></tr></table>\n</td></tr></table>\n</body>\n</html>",
+                                "tag": "const",
+                                "filters": []
+                              }
+                            ]
+                          }
+                        ],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "to",
+                        "value": "user.email",
+                        "tag": "var",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      },
+                      {
+                        "name": "from",
+                        "value": "Golden <no-reply@golden.example.com>",
+                        "tag": "const",
+                        "filters": [],
+                        "ignore": false,
+                        "expand": false,
+                        "children": []
+                      }
+                    ],
+                    "mocks": {},
+                    "output": {
+                      "items": [],
+                      "filters": [],
+                      "customize": false
+                    },
+                    "context": {},
+                    "runtime": null,
+                    "disabled": false,
+                    "description": "",
+                    "settings_registry": null
+                  }
+                ]
+              },
+              "elif": {
+                "run": []
+              },
+              "else": {
+                "run": []
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          }
+        ],
+        "test": [],
+        "example": {},
+        "market_item": {
+          "id": 0,
+          "version": 0,
+          "guid": ""
+        },
+        "guid": "6a71f47e94708ba66d559e26dd095030"
+      },
+      {
+        "name": "password_reset/confirm",
+        "description": "Set a new password using a token from a reset email.",
+        "docs": "",
+        "api_enabled": true,
+        "auth": false,
+        "response_type": "standard",
+        "verb": "POST",
+        "disabled": false,
+        "app": {
+          "id": "6b4b01c5ccaa3c9dce8634a06ddd5ef4"
+        },
+        "cache": {
+          "active": false,
+          "ttl": 3600,
+          "input": true,
+          "auth": true,
+          "datasource": true,
+          "ip": false,
+          "headers": [],
+          "env": []
+        },
+        "output": [],
+        "middleware": {
+          "pre_customize": false,
+          "post_customize": false,
+          "pre": [],
+          "post": []
+        },
+        "tag": [],
+        "history": {
+          "inherit": true,
+          "enabled": true,
+          "limit": 100
+        },
+        "input": [
+          {
+            "name": "token",
+            "type": "text",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          },
+          {
+            "name": "password",
+            "type": "text",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [
+              {
+                "name": "min",
+                "disabled": false,
+                "arg": [
+                  8
+                ]
+              }
+            ],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          }
+        ],
+        "result": [
+          {
+            "filters": [],
+            "name": "ok",
+            "tag": "const:bool",
+            "value": "true",
+            "_xsid": "",
+            "disabled": false
+          }
+        ],
+        "run": [
+          {
+            "as": "",
+            "name": "mvp:redis_ratelimit",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "key",
+                "value": "pwreset:confirm:",
+                "tag": "const",
+                "filters": [
+                  {
+                    "name": "concat",
+                    "disabled": false,
+                    "arg": [
+                      {
+                        "value": "$remote_ip",
+                        "tag": "setting",
+                        "filters": []
+                      }
+                    ]
+                  }
+                ],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "max",
+                "value": "3",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "ttl",
+                "value": "60",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "error",
+                "value": "Too many password reset attempts. Wait a few minutes and try again.",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {},
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "reset",
+            "name": "mvp:dbo_getby",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "field_name",
+                "value": "token",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "field_value",
+                "value": "token",
+                "tag": "input",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "dbo": {
+                "id": "4bf5cc55bab9c53a968c6ed94c13849d"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:precondition",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "expr": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": "!=",
+                      "left": {
+                        "operand": "reset",
+                        "tag": "var",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "null",
+                        "tag": "const:null",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "error_type": "badrequest",
+              "error": {
+                "value": "This reset link is not valid. Request a new one.",
+                "tag": "const"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:precondition",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "expr": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": "=",
+                      "left": {
+                        "operand": "reset.used_at",
+                        "tag": "var",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "null",
+                        "tag": "const:null",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "error_type": "badrequest",
+              "error": {
+                "value": "This reset link is not valid. Request a new one.",
+                "tag": "const"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:precondition",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "expr": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": ">",
+                      "left": {
+                        "operand": "reset.expires_at",
+                        "tag": "var",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "now",
+                        "tag": "const:epochms",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "error_type": "badrequest",
+              "error": {
+                "value": "This reset link is not valid. Request a new one.",
+                "tag": "const"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "spent",
+            "name": "mvp:dbo_editby",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "field_name",
+                "value": "id",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "field_value",
+                "value": "reset.id",
+                "tag": "var",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "id",
+                "value": "null",
+                "tag": "const:null",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "created_at",
+                "value": "now",
+                "tag": "const",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "owner",
+                "value": "null",
+                "tag": "const:null",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "token",
+                "value": "null",
+                "tag": "const:null",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "expires_at",
+                "value": "null",
+                "tag": "const:null",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "used_at",
+                "value": "now",
+                "tag": "const:epochms",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "dbo": {
+                "id": "4bf5cc55bab9c53a968c6ed94c13849d"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "user",
+            "name": "mvp:dbo_editby",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "field_name",
+                "value": "id",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "field_value",
+                "value": "reset.owner",
+                "tag": "var",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "id",
+                "value": "null",
+                "tag": "const:null",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "created_at",
+                "value": "now",
+                "tag": "const",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "email",
+                "value": "null",
+                "tag": "const:null",
+                "filters": [],
+                "ignore": true,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "password",
+                "value": "password",
+                "tag": "input",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "dbo": {
+                "id": "b25f08616176d89e63786103b0fc2aa7"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "outstanding",
+            "name": "mvp:dbo_view",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "dbo": {
+                "id": "4bf5cc55bab9c53a968c6ed94c13849d"
+              },
+              "search": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": "=",
+                      "left": {
+                        "operand": "owner",
+                        "tag": "col",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "reset.owner",
+                        "tag": "var",
+                        "filters": []
+                      }
+                    }
+                  },
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": "=",
+                      "left": {
+                        "operand": "used_at",
+                        "tag": "col",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "null",
+                        "tag": "const:null",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "return": {
+                "type": "list"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:foreach",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "as": "stale",
+              "list": {
+                "value": "outstanding",
+                "tag": "var",
+                "filters": []
+              },
+              "run": [
+                {
+                  "as": "stale_spent",
+                  "name": "mvp:dbo_editby",
+                  "_xsid": "",
+                  "addon": [],
+                  "input": [
+                    {
+                      "name": "field_name",
+                      "value": "id",
+                      "tag": "const",
+                      "filters": [],
+                      "ignore": false,
+                      "expand": false,
+                      "children": []
+                    },
+                    {
+                      "name": "field_value",
+                      "value": "stale.id",
+                      "tag": "var",
+                      "filters": [],
+                      "ignore": false,
+                      "expand": false,
+                      "children": []
+                    },
+                    {
+                      "name": "id",
+                      "value": "null",
+                      "tag": "const:null",
+                      "filters": [],
+                      "ignore": true,
+                      "expand": false,
+                      "children": []
+                    },
+                    {
+                      "name": "created_at",
+                      "value": "now",
+                      "tag": "const",
+                      "filters": [],
+                      "ignore": true,
+                      "expand": false,
+                      "children": []
+                    },
+                    {
+                      "name": "owner",
+                      "value": "null",
+                      "tag": "const:null",
+                      "filters": [],
+                      "ignore": true,
+                      "expand": false,
+                      "children": []
+                    },
+                    {
+                      "name": "token",
+                      "value": "null",
+                      "tag": "const:null",
+                      "filters": [],
+                      "ignore": true,
+                      "expand": false,
+                      "children": []
+                    },
+                    {
+                      "name": "expires_at",
+                      "value": "null",
+                      "tag": "const:null",
+                      "filters": [],
+                      "ignore": true,
+                      "expand": false,
+                      "children": []
+                    },
+                    {
+                      "name": "used_at",
+                      "value": "now",
+                      "tag": "const:epochms",
+                      "filters": [],
+                      "ignore": false,
+                      "expand": false,
+                      "children": []
+                    }
+                  ],
+                  "mocks": {},
+                  "output": {
+                    "items": [],
+                    "filters": [],
+                    "customize": false
+                  },
+                  "context": {
+                    "dbo": {
+                      "id": "4bf5cc55bab9c53a968c6ed94c13849d"
+                    }
+                  },
+                  "runtime": null,
+                  "disabled": false,
+                  "description": "",
+                  "settings_registry": null
+                }
+              ]
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          }
+        ],
+        "test": [],
+        "example": {},
+        "market_item": {
+          "id": 0,
+          "version": 0,
+          "guid": ""
+        },
+        "guid": "053c02b3e388fbe348c4141038a3986a"
+      },
+      {
+        "name": "password_reset/validate",
+        "description": "Check whether a reset token is still usable, without spending it.",
+        "docs": "",
+        "api_enabled": true,
+        "auth": false,
+        "response_type": "standard",
+        "verb": "POST",
+        "disabled": false,
+        "app": {
+          "id": "6b4b01c5ccaa3c9dce8634a06ddd5ef4"
+        },
+        "cache": {
+          "active": false,
+          "ttl": 3600,
+          "input": true,
+          "auth": true,
+          "datasource": true,
+          "ip": false,
+          "headers": [],
+          "env": []
+        },
+        "output": [],
+        "middleware": {
+          "pre_customize": false,
+          "post_customize": false,
+          "pre": [],
+          "post": []
+        },
+        "tag": [],
+        "history": {
+          "inherit": true,
+          "enabled": true,
+          "limit": 100
+        },
+        "input": [
+          {
+            "name": "token",
+            "type": "text",
+            "_xsid": "",
+            "nullable": false,
+            "default": "",
+            "merge": false,
+            "hidden": [],
+            "override": [],
+            "customize": {},
+            "required": true,
+            "values": [],
+            "mode": "",
+            "format": "",
+            "sensitive": false,
+            "list": {
+              "min": "",
+              "max": ""
+            },
+            "vector": {
+              "size": 3
+            },
+            "access": "public",
+            "style": {
+              "type": "single"
+            },
+            "children": [],
+            "methods": [],
+            "market_item": {
+              "id": 0,
+              "version": 0,
+              "guid": ""
+            },
+            "is_settings_registry": false,
+            "description": ""
+          }
+        ],
+        "result": [
+          {
+            "filters": [],
+            "name": "ok",
+            "tag": "const:bool",
+            "value": "true",
+            "_xsid": "",
+            "disabled": false
+          },
+          {
+            "filters": [],
+            "name": "expires_at",
+            "tag": "var",
+            "value": "reset.expires_at",
+            "_xsid": "",
+            "disabled": false
+          }
+        ],
+        "run": [
+          {
+            "as": "",
+            "name": "mvp:redis_ratelimit",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "key",
+                "value": "pwreset:validate:",
+                "tag": "const",
+                "filters": [
+                  {
+                    "name": "concat",
+                    "disabled": false,
+                    "arg": [
+                      {
+                        "value": "$remote_ip",
+                        "tag": "setting",
+                        "filters": []
+                      }
+                    ]
+                  }
+                ],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "max",
+                "value": "3",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "ttl",
+                "value": "60",
+                "tag": "const:int",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "error",
+                "value": "Too many password reset attempts. Wait a few minutes and try again.",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {},
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "reset",
+            "name": "mvp:dbo_getby",
+            "_xsid": "",
+            "addon": [],
+            "input": [
+              {
+                "name": "field_name",
+                "value": "token",
+                "tag": "const",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              },
+              {
+                "name": "field_value",
+                "value": "token",
+                "tag": "input",
+                "filters": [],
+                "ignore": false,
+                "expand": false,
+                "children": []
+              }
+            ],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "dbo": {
+                "id": "4bf5cc55bab9c53a968c6ed94c13849d"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:precondition",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "expr": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": "!=",
+                      "left": {
+                        "operand": "reset",
+                        "tag": "var",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "null",
+                        "tag": "const:null",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "error_type": "badrequest",
+              "error": {
+                "value": "This reset link is not valid. Request a new one.",
+                "tag": "const"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:precondition",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "expr": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": "=",
+                      "left": {
+                        "operand": "reset.used_at",
+                        "tag": "var",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "null",
+                        "tag": "const:null",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "error_type": "badrequest",
+              "error": {
+                "value": "This reset link is not valid. Request a new one.",
+                "tag": "const"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          },
+          {
+            "as": "",
+            "name": "mvp:precondition",
+            "_xsid": "",
+            "addon": [],
+            "input": [],
+            "mocks": {},
+            "output": {
+              "items": [],
+              "filters": [],
+              "customize": false
+            },
+            "context": {
+              "expr": {
+                "expression": [
+                  {
+                    "type": "statement",
+                    "or": false,
+                    "group": {
+                      "expression": []
+                    },
+                    "statement": {
+                      "op": ">",
+                      "left": {
+                        "operand": "reset.expires_at",
+                        "tag": "var",
+                        "filters": []
+                      },
+                      "right": {
+                        "operand": "now",
+                        "tag": "const:epochms",
+                        "filters": []
+                      }
+                    }
+                  }
+                ]
+              },
+              "error_type": "badrequest",
+              "error": {
+                "value": "This reset link is not valid. Request a new one.",
+                "tag": "const"
+              }
+            },
+            "runtime": null,
+            "disabled": false,
+            "description": "",
+            "settings_registry": null
+          }
+        ],
+        "test": [],
+        "example": {},
+        "market_item": {
+          "id": 0,
+          "version": 0,
+          "guid": ""
+        },
+        "guid": "7c7c2433fafcd701a6c637625007caf7"
+      }
+    ],
+    "tool": [],
+    "prompt": [],
+    "resource": [],
+    "toolset": [],
+    "app": [
+      {
+        "name": "Password Reset",
+        "description": "Endpoints registered by @xano-sdk/password-reset.",
+        "canonical": "password_reset",
+        "swagger": false,
+        "api_group_enabled": true,
+        "docs": "",
+        "documentation": {
+          "require_token": false,
+          "token": ""
+        },
+        "middleware": {
+          "pre_customize": false,
+          "post_customize": false,
+          "pre": [],
+          "post": []
+        },
+        "history": {
+          "inherit": false,
+          "query_enabled": true,
+          "query_limit": 100
+        },
+        "tag": [],
+        "cors": {
+          "mode": "default",
+          "allowOrigins": [],
+          "allowHeaders": [],
+          "allowCredentials": false,
+          "maxAge": 0,
+          "allowMethods": {
+            "delete": false,
+            "get": false,
+            "head": false,
+            "patch": false,
+            "post": false,
+            "put": false
+          }
+        },
+        "guid": "6b4b01c5ccaa3c9dce8634a06ddd5ef4"
+      }
+    ],
+    "knowledge": [],
+    "knowledge_file": [],
+    "realtime_server": [],
+    "channel": [],
+    "message": [],
+    "microservice": [],
+    "vault": [],
+    "market_item": [],
+    "run_install": [],
+    "action_package_install": [],
+    "env": [],
+    "workflow_test": [],
+    "service": [],
+    "branch": []
+  },
+  "sig": "01pTz3f2ySWr9_9KyBCWkuFntYA."
+}

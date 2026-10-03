@@ -1,0 +1,7 @@
+---
+description: Rules for working on @xano-sdk/password-reset, a Xano SDK module.
+alwaysApply: true
+---
+
+The canonical rules live in `AGENTS.md` at the repo root. Read it before changing anything
+under `src/`. This file is a pointer - never copy rules into it.

@@ -1,0 +1,26 @@
+name: verify
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      # v5 on both, and Node 22: GitHub forces a v4 action onto Node 24 anyway
+      # and annotates every run about it, so a v4 pin buys no stability - it
+      # buys a warning on a green build, which is how people learn to ignore
+      # annotations. Node 22 is the current LTS and clears `engines: >=20`.
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      # The suite includes the golden bundle: a peer bump that changes the
+      # encoding fails HERE, rather than in a consumer's workspace.
+      - run: npm test

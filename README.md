@@ -146,8 +146,10 @@ and for one without, identically**.
 
 That is a security property, not a stub. The endpoint is unauthenticated, so
 anything that differed by case would let anyone ask it whether anyone else has
-an account. Everything address-dependent happens inside a conditional and
-nothing about it reaches the caller.
+an account. Everything address-dependent - the lookup, the token, the send -
+runs in `post_process`, after the response has gone out, so neither the body nor
+the response time depends on the address. The caller waits for the rate
+limiters and nothing else.
 
 Rate limited twice, in separate buckets: once per caller IP (which stops one
 host harvesting addresses) and once per submitted address (which stops one
@@ -438,10 +440,19 @@ you rely on it.
   reset anyone requests. Add a scheduled `task` that deletes rows past their
   expiry if that matters at your volume; this package registers no task, because
   a package that installs a cron into someone else's workspace unasked is worse.
-- **The `request` endpoint's timing still differs.** The response body does not
-  distinguish a known address from an unknown one, but sending mail takes longer
-  than not sending it. A determined attacker can measure that. Closing it needs
-  a background send, which is a different design.
+- **A failure after the response reaches no one.** The lookup and the send run
+  in `post_process`, so the response cannot vary with whether an address has an
+  account - not in its body, and not in its timing. The cost is that a send
+  which fails outright (an unset key, a misconfigured provider) can no longer
+  surface as a 500 either. Inline, it could only ever have surfaced for a KNOWN
+  address, which is the oracle again. Your provider's log is where to look.
+- **A reset does not sign anyone out.** Auth tokens minted before the reset stay
+  valid until they expire. Xano auth tokens are stateless - nothing on the
+  server holds a list of them to revoke - and this package neither mints nor
+  verifies them. If "someone else may be signed in as me" is a reason your
+  users reset, keep your login's token `expiration` short, or add a revocation
+  check of your own to the endpoints that bind your auth table. What `confirm`
+  does revoke is every other outstanding reset token for the account.
 - **Rate limiting is per Redis key, not per account.** A distributed caller with
   many IPs still gets `max` attempts per address, which is the bound that
   matters for brute force - but the IP bucket alone will not stop them.

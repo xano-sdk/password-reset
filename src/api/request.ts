@@ -7,6 +7,13 @@
  * enumeration oracle, and it is unauthenticated, so anyone may ask it about
  * anyone. Everything that depends on the address existing happens inside the
  * conditional; nothing about it reaches the caller.
+ *
+ * The constant body is not enough on its own: the response TIME would still
+ * differ. A known address mints a token, writes a row and makes an outbound
+ * call to the mail provider before the stack ends; an unknown one ends after
+ * one lookup. So the lookup and everything after it run in `post_process`,
+ * which the engine starts only after the response has gone out. The caller
+ * waits for the two limiters and nothing else, whichever address it sent.
  */
 import {
   query,
@@ -54,59 +61,67 @@ export const createRequestResetQuery = (
       // inbox flooded from many hosts.
       rateLimitStatement("request-ip", options.rateLimit),
       rateLimitStatement("request-email", options.rateLimit, inp("email")),
-      s.db.get({
-        table: options.authTable,
-        fieldName: options.emailColumn,
-        fieldValue: inp("email"),
-        // Only what the mail needs. The row also holds the password hash.
-        output: ["id", options.emailColumn],
-        as: "user",
-      }),
-      s.conditional({
-        // `{ safe: true }` because db.get binds null on a miss, and this is the
-        // existence guard itself - there is nothing earlier to have proved the
-        // base non-null.
-        when: expr(ref("user", { safe: true }), "!=", c.null()),
-        // A plain array. The widening rule is about the QUERY's own stack,
-        // which must stay a literal tuple; a nested block is typed
-        // `Statement[]` by the engine's own shape and has no tuple to lose.
-        then: [
-          // A v4 UUID: 122 bits of entropy, engine-generated. Never derived
-          // from the address or the clock - a token a caller can predict is a
-          // token a caller can mint. Not `create_guid`: it is an internal
-          // statement XanoScript cannot spell, and the SDK does not expose it.
-          s.security.create_uuid({ as: "token" }),
-          s.db.add({
-            table: tokenTable,
-            row: {
-              owner: ref("user.id"),
-              token: ref("token"),
-              // Epoch-ms, so the expiry check is one integer comparison
-              // against c.now() with no timezone in the picture.
-              expires_at: withFilters(c.now(), fl.add(options.tokenTtlSeconds * 1000)),
-            },
-            as: "reset",
-          }),
-          s.util.send_email({
-            // Read back from the row, never echoed from the input: this is the
-            // address the account actually has.
-            to: ref(`user.${options.emailColumn}`),
-            ...(options.fromEmail === undefined ? {} : { from: c.text(options.fromEmail) }),
-            subject: c.text(options.emailSubject),
-            // A JS template literal CANNOT compose a tagged value - it
-            // stringifies it at build time and mails "[object Object]". The
-            // document's literal halves are assembled at build time in
-            // email-template.ts; the token is joined at RUNTIME, by the filter
-            // chain, once per place it appears.
-            message: messageValue(options, "token"),
-            service_provider: options.emailProvider,
-            // The key is read server-side out of the workspace environment. It
-            // is never in the bundle, so it cannot reach a frontend build.
-            ...(options.emailProvider === "resend" ? { api_key: env(options.apiKeyEnv) } : {}),
-            as: "sent",
-          }),
-        ],
-      }),
+      // After the response. See the header comment: the timing of everything
+      // in here depends on whether the address has an account, so none of it
+      // may run while the caller is still waiting. A failure in here (a
+      // misconfigured mailer, say) is equally invisible to the caller, where
+      // inline it would have been a 500 only a KNOWN address could produce.
+      // A plain array, like the conditional's `then`: positional `Statement[]`.
+      s.util.post_process([
+        s.db.get({
+          table: options.authTable,
+          fieldName: options.emailColumn,
+          fieldValue: inp("email"),
+          // Only what the mail needs. The row also holds the password hash.
+          output: ["id", options.emailColumn],
+          as: "user",
+        }),
+        s.conditional({
+          // `{ safe: true }` because db.get binds null on a miss, and this is the
+          // existence guard itself - there is nothing earlier to have proved the
+          // base non-null.
+          when: expr(ref("user", { safe: true }), "!=", c.null()),
+          // A plain array. The widening rule is about the QUERY's own stack,
+          // which must stay a literal tuple; a nested block is typed
+          // `Statement[]` by the engine's own shape and has no tuple to lose.
+          then: [
+            // A v4 UUID: 122 bits of entropy, engine-generated. Never derived
+            // from the address or the clock - a token a caller can predict is a
+            // token a caller can mint. Not `create_guid`: it is an internal
+            // statement XanoScript cannot spell, and the SDK does not expose it.
+            s.security.create_uuid({ as: "token" }),
+            s.db.add({
+              table: tokenTable,
+              row: {
+                owner: ref("user.id"),
+                token: ref("token"),
+                // Epoch-ms, so the expiry check is one integer comparison
+                // against c.now() with no timezone in the picture.
+                expires_at: withFilters(c.now(), fl.add(options.tokenTtlSeconds * 1000)),
+              },
+              as: "reset",
+            }),
+            s.util.send_email({
+              // Read back from the row, never echoed from the input: this is the
+              // address the account actually has.
+              to: ref(`user.${options.emailColumn}`),
+              ...(options.fromEmail === undefined ? {} : { from: c.text(options.fromEmail) }),
+              subject: c.text(options.emailSubject),
+              // A JS template literal CANNOT compose a tagged value - it
+              // stringifies it at build time and mails "[object Object]". The
+              // document's literal halves are assembled at build time in
+              // email-template.ts; the token is joined at RUNTIME, by the filter
+              // chain, once per place it appears.
+              message: messageValue(options, "token"),
+              service_provider: options.emailProvider,
+              // The key is read server-side out of the workspace environment. It
+              // is never in the bundle, so it cannot reach a frontend build.
+              ...(options.emailProvider === "resend" ? { api_key: env(options.apiKeyEnv) } : {}),
+              as: "sent",
+            }),
+          ],
+        }),
+      ]),
     ],
     // Constant, and the whole point. See the header comment.
     response: { ok: c.bool(true) },

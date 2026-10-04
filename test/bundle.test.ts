@@ -67,7 +67,8 @@ describe("golden bundle", () => {
 
     const request = bundle.payload.query.find((q: any) => q.name === "password_reset/request");
     const send = request.run
-      .find((s: any) => s.name === "mvp:conditional")
+      .find((s: any) => s.name === "mvp:post_process")
+      .context.run.find((s: any) => s.name === "mvp:conditional")
       .context.if.run.find((s: any) => s.name === "mvp:send_email");
     const arg = (name: string) => send.input.find((i: any) => i.name === name);
     expect(arg("subject").value).toBe("Choose a new password");

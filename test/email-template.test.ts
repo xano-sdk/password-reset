@@ -141,7 +141,7 @@ describe("a resetUrl resolved at REQUEST time", () => {
    * wherever the frontend URL is stable and wrong on an ephemeral, where
    * `deploy --static` mints a new host on every run and a deploy WITHOUT
    * `--static` deletes the one that is serving - so the link can only ever
-   * carry the previous deploy's URL (dev-log 2026-08-31, xanots/sdk#240).
+   * carry the previous deploy's URL (dev-log 2026-08-31).
    *
    * Passing `env("APP_URL")` moves the URL to a slot the stack fills when the
    * mail is sent, so a deploy can set it after it knows its own host.

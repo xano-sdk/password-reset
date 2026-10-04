@@ -17,6 +17,7 @@ const GET = "mvp:dbo_getby";
 const ADD = "mvp:dbo_add";
 const EDIT = "mvp:dbo_editby";
 const CONDITIONAL = "mvp:conditional";
+const POST_PROCESS = "mvp:post_process";
 const PRECONDITION = "mvp:precondition";
 
 /** One named input off an encoded statement. */
@@ -56,6 +57,10 @@ describe("the API group", () => {
 
 describe("POST password_reset/request", () => {
   const request = (overrides = {}) => queryIn(exportWithModule(overrides), "POST", "password_reset/request");
+  /** The statements that run after the response - everything address-dependent. */
+  const afterResponse = (q: any): any[] => statementsNamed(q, POST_PROCESS)[0].context.run;
+  /** The conditional's `then`: what runs only for an address with an account. */
+  const ifUser = (q: any): any[] => afterResponse(q).find((stmt) => stmt.name === CONDITIONAL).context.if.run;
 
   it("answers identically whether or not the address has an account", () => {
     // The only response is a constant. An endpoint that answered differently
@@ -66,13 +71,15 @@ describe("POST password_reset/request", () => {
     ]);
   });
 
-  it("does everything address-dependent inside the conditional", () => {
+  it("does everything address-dependent after the response, inside the conditional", () => {
     const stack = request().run;
-    // Nothing after the conditional, so there is no shared statement whose
-    // presence or timing could differ between the two cases.
-    expect(stack[stack.length - 1].name).toBe(CONDITIONAL);
-    const inner = stack[stack.length - 1].context.if.run.map((s: any) => s.name);
-    expect(inner).toEqual(["mvp:uuid4", ADD, SEND_EMAIL]);
+    // Before the response: the two limiters and NOTHING else. The lookup, the
+    // token, the row and the outbound send all take time that depends on
+    // whether the address has an account, so inline they would make the
+    // response's timing an enumeration oracle even with a constant body.
+    expect(stack.map((s: any) => s.name)).toEqual([RATELIMIT, RATELIMIT, POST_PROCESS]);
+    expect(afterResponse(request()).map((s: any) => s.name)).toEqual([GET, CONDITIONAL]);
+    expect(ifUser(request()).map((s: any) => s.name)).toEqual(["mvp:uuid4", ADD, SEND_EMAIL]);
   });
 
   it("rate-limits on the caller IP AND the target address, in separate buckets", () => {
@@ -106,30 +113,29 @@ describe("POST password_reset/request", () => {
   });
 
   it("reads only the columns the mail needs off the user row", () => {
-    const get = statementsNamed(request(), GET)[0];
+    const get = afterResponse(request()).find((stmt) => stmt.name === GET);
     // The auth row also holds the password hash.
     expect(get.output.items.map((i: any) => i.name)).toEqual(["id", "email"]);
     expect(get.output.customize).toBe(true);
   });
 
   it("follows the consumer's column names", () => {
-    const get = statementsNamed(
+    const get = afterResponse(
       request({ authTable: renamedColumnAuthTable, emailColumn: "login_email", passwordColumn: "pass_hash" }),
-      GET,
-    )[0];
+    ).find((stmt) => stmt.name === GET);
     expect(argOf(get, "field_name").value).toBe("login_email");
     expect(get.output.items.map((i: any) => i.name)).toEqual(["id", "login_email"]);
   });
 
   it("mints the token with the engine's UUIDv4 generator, not from the address or the clock", () => {
-    const inner = statementsNamed(request(), CONDITIONAL)[0].context.if.run;
+    const inner = ifUser(request());
     // A token a caller can predict is a token a caller can mint.
     expect(inner[0]).toMatchObject({ name: "mvp:uuid4", as: "token" });
     expect(argOf(inner[1], "token")).toMatchObject({ value: "token", tag: "var" });
   });
 
   it("computes the expiry as now + ttl in epoch-ms", () => {
-    const add = statementsNamed(request({ tokenTtlSeconds: 1800 }), CONDITIONAL)[0].context.if.run[1];
+    const add = ifUser(request({ tokenTtlSeconds: 1800 }))[1];
     const expires = argOf(add, "expires_at");
     expect(expires).toMatchObject({ value: "now", tag: "const:epochms" });
     expect(expires.filters[0]).toMatchObject({ name: "add" });
@@ -137,7 +143,7 @@ describe("POST password_reset/request", () => {
   });
 
   it("writes with the full-column row form", () => {
-    const add = statementsNamed(request(), CONDITIONAL)[0].context.if.run[1];
+    const add = ifUser(request())[1];
     // `row: {}` and the `data: [{name,value}]` array are NOT interchangeable.
     // `row` emits the engine's full-column form, which is why every column -
     // including the auto-filled `used_at` - appears here.
@@ -152,7 +158,7 @@ describe("POST password_reset/request", () => {
   });
 
   it("composes the link at RUNTIME, through the filter chain", () => {
-    const send = statementsNamed(request(), CONDITIONAL)[0].context.if.run[2];
+    const send = ifUser(request())[2];
     const message = argOf(send, "message");
     // A JS template literal cannot compose a tagged value - it stringifies it
     // at BUILD time and mails "[object Object]". This assertion is what catches
@@ -173,7 +179,7 @@ describe("POST password_reset/request", () => {
     // so a deploy can set it after it knows its own static host. The chain must
     // alternate url, "?token=", token, literal - three times over, once per
     // place the link appears in the HTML document.
-    const send = statementsNamed(request({ resetUrl: env("APP_URL") }), CONDITIONAL)[0].context.if.run[2];
+    const send = ifUser(request({ resetUrl: env("APP_URL") }))[2];
     const message = argOf(send, "message");
     const chain = message.filters.map((f: any) => f.arg[0]);
     expect(chain).toHaveLength(12);
@@ -187,7 +193,7 @@ describe("POST password_reset/request", () => {
   });
 
   it("sends ONE token join in plain-text mode", () => {
-    const send = statementsNamed(request({ emailFormat: "text" }), CONDITIONAL)[0].context.if.run[2];
+    const send = ifUser(request({ emailFormat: "text" }))[2];
     const message = argOf(send, "message");
     expect(message.value).not.toContain("<");
     expect(message.filters).toHaveLength(2);
@@ -195,10 +201,7 @@ describe("POST password_reset/request", () => {
   });
 
   it("escapes the consumer's strings into the HTML document", () => {
-    const send = statementsNamed(
-      request({ brandName: "Ben & Jerry's <Ltd>", emailIntro: "5 > 3 & \"quoted\"" }),
-      CONDITIONAL,
-    )[0].context.if.run[2];
+    const send = ifUser(request({ brandName: "Ben & Jerry's <Ltd>", emailIntro: "5 > 3 & \"quoted\"" }))[2];
     const html = argOf(send, "message").value;
     // These come from config, not a request, so this is a CORRECTNESS boundary
     // rather than an XSS one - an unescaped `&` breaks the document.
@@ -208,26 +211,26 @@ describe("POST password_reset/request", () => {
   });
 
   it("omits the brand block entirely when no brandName is set", () => {
-    const html = argOf(statementsNamed(request(), CONDITIONAL)[0].context.if.run[2], "message").value;
+    const html = argOf(ifUser(request())[2], "message").value;
     // An empty slot reads worse than no slot.
     expect(html).not.toContain("text-transform:uppercase");
   });
 
   it("writes the accent colour into the button and the link", () => {
     const html = argOf(
-      statementsNamed(request({ brandColor: "#7c3aed" }), CONDITIONAL)[0].context.if.run[2],
+      ifUser(request({ brandColor: "#7c3aed" }))[2],
       "message",
     ).value;
     expect(html).toContain("background:#7c3aed");
   });
 
   it("mails the address on the ROW, not the address the caller submitted", () => {
-    const send = statementsNamed(request(), CONDITIONAL)[0].context.if.run[2];
+    const send = ifUser(request())[2];
     expect(argOf(send, "to")).toMatchObject({ value: "user.email", tag: "var" });
   });
 
   it("reads the Resend key out of the workspace environment", () => {
-    const send = statementsNamed(request(), CONDITIONAL)[0].context.if.run[2];
+    const send = ifUser(request())[2];
     expect(argOf(send, "service_provider").value).toBe("resend");
     // tag "setting" is $env.NAME - resolved server-side at request time, so the
     // key is never in the bundle and cannot reach a frontend build.
@@ -235,15 +238,12 @@ describe("POST password_reset/request", () => {
   });
 
   it("honours a custom env var name", () => {
-    const send = statementsNamed(request({ apiKeyEnv: "MY_RESEND" }), CONDITIONAL)[0].context.if.run[2];
+    const send = ifUser(request({ apiKeyEnv: "MY_RESEND" }))[2];
     expect(argOf(send, "api_key").value).toBe("MY_RESEND");
   });
 
   it("sends no api_key at all through the built-in Xano mailer", () => {
-    const send = statementsNamed(
-      request({ emailProvider: "xano", fromEmail: undefined }),
-      CONDITIONAL,
-    )[0].context.if.run[2];
+    const send = ifUser(request({ emailProvider: "xano", fromEmail: undefined }))[2];
     expect(argOf(send, "service_provider").value).toBe("xano");
     // The built-in mailer needs no key. Emitting an empty one would look like a
     // misconfigured Resend rather than a deliberate choice.

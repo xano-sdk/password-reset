@@ -6,6 +6,11 @@
  * which one applies turns the endpoint into an oracle about tokens it does not
  * hold, and the person who legitimately clicked a stale link is told to request
  * a new one either way.
+ *
+ * It revokes reset tokens, not sessions. An auth token minted before the reset
+ * stays valid until it expires: Xano auth tokens are stateless, and this module
+ * neither mints nor verifies them, so there is nothing here to revoke. The
+ * README's "Read before production" says so where a consumer will see it.
  */
 import {
   query,

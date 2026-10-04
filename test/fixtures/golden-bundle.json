@@ -821,58 +821,8 @@
             "settings_registry": null
           },
           {
-            "as": "user",
-            "name": "mvp:dbo_getby",
-            "_xsid": "",
-            "addon": [],
-            "input": [
-              {
-                "name": "field_name",
-                "value": "email",
-                "tag": "const",
-                "filters": [],
-                "ignore": false,
-                "expand": false,
-                "children": []
-              },
-              {
-                "name": "field_value",
-                "value": "email",
-                "tag": "input",
-                "filters": [],
-                "ignore": false,
-                "expand": false,
-                "children": []
-              }
-            ],
-            "mocks": {},
-            "output": {
-              "items": [
-                {
-                  "name": "id",
-                  "children": []
-                },
-                {
-                  "name": "email",
-                  "children": []
-                }
-              ],
-              "filters": [],
-              "customize": true
-            },
-            "context": {
-              "dbo": {
-                "id": "b25f08616176d89e63786103b0fc2aa7"
-              }
-            },
-            "runtime": null,
-            "disabled": false,
-            "description": "",
-            "settings_registry": null
-          },
-          {
             "as": "",
-            "name": "mvp:conditional",
+            "name": "mvp:post_process",
             "_xsid": "",
             "addon": [],
             "input": [],
@@ -883,287 +833,358 @@
               "customize": false
             },
             "context": {
-              "expr": {
-                "expression": [
-                  {
-                    "type": "statement",
-                    "or": false,
-                    "group": {
-                      "expression": []
-                    },
-                    "statement": {
-                      "op": "!=",
-                      "left": {
-                        "operand": "user",
-                        "tag": "var",
-                        "filters": []
-                      },
-                      "right": {
-                        "operand": "null",
-                        "tag": "const:null",
-                        "filters": []
-                      }
-                    }
-                  }
-                ]
-              },
-              "if": {
-                "run": [
-                  {
-                    "as": "token",
-                    "name": "mvp:uuid4",
-                    "_xsid": "",
-                    "addon": [],
-                    "input": [],
-                    "mocks": {},
-                    "output": {
-                      "items": [],
+              "run": [
+                {
+                  "as": "user",
+                  "name": "mvp:dbo_getby",
+                  "_xsid": "",
+                  "addon": [],
+                  "input": [
+                    {
+                      "name": "field_name",
+                      "value": "email",
+                      "tag": "const",
                       "filters": [],
-                      "customize": false
+                      "ignore": false,
+                      "expand": false,
+                      "children": []
                     },
-                    "context": {},
-                    "runtime": null,
-                    "disabled": false,
-                    "description": "",
-                    "settings_registry": null
-                  },
-                  {
-                    "as": "reset",
-                    "name": "mvp:dbo_add",
-                    "_xsid": "",
-                    "addon": [],
-                    "input": [
+                    {
+                      "name": "field_value",
+                      "value": "email",
+                      "tag": "input",
+                      "filters": [],
+                      "ignore": false,
+                      "expand": false,
+                      "children": []
+                    }
+                  ],
+                  "mocks": {},
+                  "output": {
+                    "items": [
                       {
                         "name": "id",
-                        "value": "null",
-                        "tag": "const:null",
-                        "filters": [],
-                        "ignore": true,
-                        "expand": false,
                         "children": []
                       },
                       {
-                        "name": "created_at",
-                        "value": "now",
-                        "tag": "const",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "owner",
-                        "value": "user.id",
-                        "tag": "var",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "token",
-                        "value": "token",
-                        "tag": "var",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "expires_at",
-                        "value": "now",
-                        "tag": "const:epochms",
-                        "filters": [
-                          {
-                            "name": "add",
-                            "disabled": false,
-                            "arg": [
-                              {
-                                "value": "900000",
-                                "tag": "const:int",
-                                "filters": []
-                              }
-                            ]
-                          }
-                        ],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "used_at",
-                        "value": "null",
-                        "tag": "const:null",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
+                        "name": "email",
                         "children": []
                       }
                     ],
-                    "mocks": {},
-                    "output": {
-                      "items": [],
-                      "filters": [],
-                      "customize": false
-                    },
-                    "context": {
-                      "dbo": {
-                        "id": "4bf5cc55bab9c53a968c6ed94c13849d"
-                      }
-                    },
-                    "runtime": null,
-                    "disabled": false,
-                    "description": "",
-                    "settings_registry": null
+                    "filters": [],
+                    "customize": true
                   },
-                  {
-                    "as": "sent",
-                    "name": "mvp:send_email",
-                    "_xsid": "",
-                    "addon": [],
-                    "input": [
-                      {
-                        "name": "api_key",
-                        "value": "GOLDEN_RESEND_KEY",
-                        "tag": "setting",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "service_provider",
-                        "value": "resend",
-                        "tag": "const",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "subject",
-                        "value": "Choose a new password",
-                        "tag": "const",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "message",
-                        "value": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"color-scheme\" content=\"light dark\">\n<meta name=\"supported-color-schemes\" content=\"light dark\">\n<title>Choose a new password</title>\n<style>\n  @media (prefers-color-scheme: dark) {\n    .pw-bg { background: #09090b !important; }\n    .pw-card { background: #18181b !important; border-color: #27272a !important; }\n    .pw-head, .pw-url { color: #fafafa !important; }\n    .pw-body, .pw-foot { color: #a1a1aa !important; }\n    .pw-rule { border-color: #27272a !important; }\n  }\n  @media (max-width: 480px) {\n    .pw-card { padding: 28px 22px !important; }\n  }\n</style>\n</head>\n<body class=\"pw-bg\" style=\"margin:0;padding:0;background:#f4f4f5;\">\n<div style=\"display:none;font-size:1px;color:#f4f4f5;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;\">Choose a new password</div>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"pw-bg\" style=\"background:#f4f4f5;\">\n<tr><td align=\"center\" style=\"padding:40px 16px;\">\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"max-width:480px;\">\n<tr><td class=\"pw-card\" style=\"background:#ffffff;border:1px solid #e4e4e7;border-radius:14px;padding:36px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\">\n<p style=\"margin:0 0 22px;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#7c3aed;\">Golden &amp; Co &lt;Ltd&gt;</p><h1 class=\"pw-head\" style=\"margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:650;color:#18181b;\">Choose a new password</h1>\n<p class=\"pw-body\" style=\"margin:0 0 26px;font-size:15px;line-height:1.6;color:#52525b;\">Golden intro.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"border-radius:9px;background:#7c3aed;\">\n<a href=\"https://golden.example.com/reset?lang=en&amp;token=",
-                        "tag": "const",
-                        "filters": [
-                          {
-                            "name": "concat",
-                            "disabled": false,
-                            "arg": [
-                              {
-                                "value": "token",
-                                "tag": "var",
-                                "filters": []
-                              }
-                            ]
+                  "context": {
+                    "dbo": {
+                      "id": "b25f08616176d89e63786103b0fc2aa7"
+                    }
+                  },
+                  "runtime": null,
+                  "disabled": false,
+                  "description": "",
+                  "settings_registry": null
+                },
+                {
+                  "as": "",
+                  "name": "mvp:conditional",
+                  "_xsid": "",
+                  "addon": [],
+                  "input": [],
+                  "mocks": {},
+                  "output": {
+                    "items": [],
+                    "filters": [],
+                    "customize": false
+                  },
+                  "context": {
+                    "expr": {
+                      "expression": [
+                        {
+                          "type": "statement",
+                          "or": false,
+                          "group": {
+                            "expression": []
                           },
-                          {
-                            "name": "concat",
-                            "disabled": false,
-                            "arg": [
-                              {
-                                "value": "\" style=\"display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;line-height:1;color:#ffffff;text-decoration:none;border-radius:9px;\">Pick a new one</a>\n</td></tr></table>\n<p class=\"pw-body\" style=\"margin:26px 0 6px;font-size:13px;line-height:1.6;color:#71717a;\">Or paste this link into your browser:</p>\n<p class=\"pw-url\" style=\"margin:0;font-size:13px;line-height:1.6;word-break:break-all;\"><a href=\"https://golden.example.com/reset?lang=en&amp;token=",
-                                "tag": "const",
-                                "filters": []
-                              }
-                            ]
-                          },
-                          {
-                            "name": "concat",
-                            "disabled": false,
-                            "arg": [
-                              {
-                                "value": "token",
-                                "tag": "var",
-                                "filters": []
-                              }
-                            ]
-                          },
-                          {
-                            "name": "concat",
-                            "disabled": false,
-                            "arg": [
-                              {
-                                "value": "\" style=\"color:#7c3aed;text-decoration:underline;\">https://golden.example.com/reset?lang=en&amp;token=",
-                                "tag": "const",
-                                "filters": []
-                              }
-                            ]
-                          },
-                          {
-                            "name": "concat",
-                            "disabled": false,
-                            "arg": [
-                              {
-                                "value": "token",
-                                "tag": "var",
-                                "filters": []
-                              }
-                            ]
-                          },
-                          {
-                            "name": "concat",
-                            "disabled": false,
-                            "arg": [
-                              {
-                                "value": "</a></p>\n<hr class=\"pw-rule\" style=\"border:none;border-top:1px solid #e4e4e7;margin:28px 0 0;\">\n<p class=\"pw-foot\" style=\"margin:20px 0 0;font-size:13px;line-height:1.6;color:#71717a;\">Golden outro.</p>\n</td></tr></table>\n</td></tr></table>\n</body>\n</html>",
-                                "tag": "const",
-                                "filters": []
-                              }
-                            ]
+                          "statement": {
+                            "op": "!=",
+                            "left": {
+                              "operand": "user",
+                              "tag": "var",
+                              "filters": []
+                            },
+                            "right": {
+                              "operand": "null",
+                              "tag": "const:null",
+                              "filters": []
+                            }
                           }
-                        ],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "to",
-                        "value": "user.email",
-                        "tag": "var",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      },
-                      {
-                        "name": "from",
-                        "value": "Golden <no-reply@golden.example.com>",
-                        "tag": "const",
-                        "filters": [],
-                        "ignore": false,
-                        "expand": false,
-                        "children": []
-                      }
-                    ],
-                    "mocks": {},
-                    "output": {
-                      "items": [],
-                      "filters": [],
-                      "customize": false
+                        }
+                      ]
                     },
-                    "context": {},
-                    "runtime": null,
-                    "disabled": false,
-                    "description": "",
-                    "settings_registry": null
-                  }
-                ]
-              },
-              "elif": {
-                "run": []
-              },
-              "else": {
-                "run": []
-              }
+                    "if": {
+                      "run": [
+                        {
+                          "as": "token",
+                          "name": "mvp:uuid4",
+                          "_xsid": "",
+                          "addon": [],
+                          "input": [],
+                          "mocks": {},
+                          "output": {
+                            "items": [],
+                            "filters": [],
+                            "customize": false
+                          },
+                          "context": {},
+                          "runtime": null,
+                          "disabled": false,
+                          "description": "",
+                          "settings_registry": null
+                        },
+                        {
+                          "as": "reset",
+                          "name": "mvp:dbo_add",
+                          "_xsid": "",
+                          "addon": [],
+                          "input": [
+                            {
+                              "name": "id",
+                              "value": "null",
+                              "tag": "const:null",
+                              "filters": [],
+                              "ignore": true,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "created_at",
+                              "value": "now",
+                              "tag": "const",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "owner",
+                              "value": "user.id",
+                              "tag": "var",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "token",
+                              "value": "token",
+                              "tag": "var",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "expires_at",
+                              "value": "now",
+                              "tag": "const:epochms",
+                              "filters": [
+                                {
+                                  "name": "add",
+                                  "disabled": false,
+                                  "arg": [
+                                    {
+                                      "value": "900000",
+                                      "tag": "const:int",
+                                      "filters": []
+                                    }
+                                  ]
+                                }
+                              ],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "used_at",
+                              "value": "null",
+                              "tag": "const:null",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            }
+                          ],
+                          "mocks": {},
+                          "output": {
+                            "items": [],
+                            "filters": [],
+                            "customize": false
+                          },
+                          "context": {
+                            "dbo": {
+                              "id": "4bf5cc55bab9c53a968c6ed94c13849d"
+                            }
+                          },
+                          "runtime": null,
+                          "disabled": false,
+                          "description": "",
+                          "settings_registry": null
+                        },
+                        {
+                          "as": "sent",
+                          "name": "mvp:send_email",
+                          "_xsid": "",
+                          "addon": [],
+                          "input": [
+                            {
+                              "name": "api_key",
+                              "value": "GOLDEN_RESEND_KEY",
+                              "tag": "setting",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "service_provider",
+                              "value": "resend",
+                              "tag": "const",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "subject",
+                              "value": "Choose a new password",
+                              "tag": "const",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "message",
+                              "value": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"color-scheme\" content=\"light dark\">\n<meta name=\"supported-color-schemes\" content=\"light dark\">\n<title>Choose a new password</title>\n<style>\n  @media (prefers-color-scheme: dark) {\n    .pw-bg { background: #09090b !important; }\n    .pw-card { background: #18181b !important; border-color: #27272a !important; }\n    .pw-head, .pw-url { color: #fafafa !important; }\n    .pw-body, .pw-foot { color: #a1a1aa !important; }\n    .pw-rule { border-color: #27272a !important; }\n  }\n  @media (max-width: 480px) {\n    .pw-card { padding: 28px 22px !important; }\n  }\n</style>\n</head>\n<body class=\"pw-bg\" style=\"margin:0;padding:0;background:#f4f4f5;\">\n<div style=\"display:none;font-size:1px;color:#f4f4f5;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;\">Choose a new password</div>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"pw-bg\" style=\"background:#f4f4f5;\">\n<tr><td align=\"center\" style=\"padding:40px 16px;\">\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"max-width:480px;\">\n<tr><td class=\"pw-card\" style=\"background:#ffffff;border:1px solid #e4e4e7;border-radius:14px;padding:36px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\">\n<p style=\"margin:0 0 22px;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#7c3aed;\">Golden &amp; Co &lt;Ltd&gt;</p><h1 class=\"pw-head\" style=\"margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:650;color:#18181b;\">Choose a new password</h1>\n<p class=\"pw-body\" style=\"margin:0 0 26px;font-size:15px;line-height:1.6;color:#52525b;\">Golden intro.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"border-radius:9px;background:#7c3aed;\">\n<a href=\"https://golden.example.com/reset?lang=en&amp;token=",
+                              "tag": "const",
+                              "filters": [
+                                {
+                                  "name": "concat",
+                                  "disabled": false,
+                                  "arg": [
+                                    {
+                                      "value": "token",
+                                      "tag": "var",
+                                      "filters": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "name": "concat",
+                                  "disabled": false,
+                                  "arg": [
+                                    {
+                                      "value": "\" style=\"display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;line-height:1;color:#ffffff;text-decoration:none;border-radius:9px;\">Pick a new one</a>\n</td></tr></table>\n<p class=\"pw-body\" style=\"margin:26px 0 6px;font-size:13px;line-height:1.6;color:#71717a;\">Or paste this link into your browser:</p>\n<p class=\"pw-url\" style=\"margin:0;font-size:13px;line-height:1.6;word-break:break-all;\"><a href=\"https://golden.example.com/reset?lang=en&amp;token=",
+                                      "tag": "const",
+                                      "filters": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "name": "concat",
+                                  "disabled": false,
+                                  "arg": [
+                                    {
+                                      "value": "token",
+                                      "tag": "var",
+                                      "filters": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "name": "concat",
+                                  "disabled": false,
+                                  "arg": [
+                                    {
+                                      "value": "\" style=\"color:#7c3aed;text-decoration:underline;\">https://golden.example.com/reset?lang=en&amp;token=",
+                                      "tag": "const",
+                                      "filters": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "name": "concat",
+                                  "disabled": false,
+                                  "arg": [
+                                    {
+                                      "value": "token",
+                                      "tag": "var",
+                                      "filters": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "name": "concat",
+                                  "disabled": false,
+                                  "arg": [
+                                    {
+                                      "value": "</a></p>\n<hr class=\"pw-rule\" style=\"border:none;border-top:1px solid #e4e4e7;margin:28px 0 0;\">\n<p class=\"pw-foot\" style=\"margin:20px 0 0;font-size:13px;line-height:1.6;color:#71717a;\">Golden outro.</p>\n</td></tr></table>\n</td></tr></table>\n</body>\n</html>",
+                                      "tag": "const",
+                                      "filters": []
+                                    }
+                                  ]
+                                }
+                              ],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "to",
+                              "value": "user.email",
+                              "tag": "var",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            },
+                            {
+                              "name": "from",
+                              "value": "Golden <no-reply@golden.example.com>",
+                              "tag": "const",
+                              "filters": [],
+                              "ignore": false,
+                              "expand": false,
+                              "children": []
+                            }
+                          ],
+                          "mocks": {},
+                          "output": {
+                            "items": [],
+                            "filters": [],
+                            "customize": false
+                          },
+                          "context": {},
+                          "runtime": null,
+                          "disabled": false,
+                          "description": "",
+                          "settings_registry": null
+                        }
+                      ]
+                    },
+                    "elif": {
+                      "run": []
+                    },
+                    "else": {
+                      "run": []
+                    }
+                  },
+                  "runtime": null,
+                  "disabled": false,
+                  "description": "",
+                  "settings_registry": null
+                }
+              ]
             },
             "runtime": null,
             "disabled": false,
@@ -2349,5 +2370,5 @@
     "service": [],
     "branch": []
   },
-  "sig": "01pTz3f2ySWr9_9KyBCWkuFntYA."
+  "sig": "MuUs5Pd3Xg4XNQEtznR2Py01o_0."
 }

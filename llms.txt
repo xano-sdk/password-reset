@@ -126,7 +126,11 @@ whether anyone else has an account. Do not "improve" it into a 404.
 `validate` and `confirm` return ONE message for an unknown token, a spent token and an
 expired one: `"This reset link is not valid. Request a new one."`. Same reason.
 
-**`{ ok: true }` from `request` means the stack ran, NOT that an email was sent.** Nor does
+**`{ ok: true }` from `request` means the request was accepted, NOT that an email was sent.**
+The lookup and the send run in `post_process`, AFTER the response, so the response can vary
+with the address in neither its body nor its timing - and a send that fails outright never
+reaches the caller as a 500 either. Do not move them back into the stack: inline, a known
+address takes measurably longer (a row write and an outbound call) than an unknown one. Nor does
 `send_email`'s own `status: "success"`, which means QUEUED and comes back even for a recipient
 that is not a valid address - it catches a misconfigured statement and nothing else. This
 package deliberately does not branch on it - a caller-visible difference between a failed send and no
@@ -446,6 +450,11 @@ a static host and a backend on the instance work together as-is.
   "Not found", "expired" and "already used" are an oracle about tokens the caller does not hold.
 - **Do not add a token to the `confirm` response.** Resetting a password is not logging in; the
   user goes through your ordinary login endpoint next.
+- **A reset does not sign anyone out - tell the consumer.** Auth tokens minted before it stay
+  valid until they expire: Xano auth tokens are stateless, and this package neither mints nor
+  verifies them, so it has nothing to revoke. If that matters, the consumer shortens their login
+  token's `expiration` or adds their own revocation check. `confirm` revokes only the other
+  outstanding RESET tokens.
 - **Tell the consumer to turn OFF click tracking on the sending domain.** Every major provider
   rewrites links through a tracking domain with the original URL - and the TOKEN - encoded in the
   path (`…awstrack.me/L0/https:%2F%2F…%3Ftoken=<token>/1/…`, observed in a real Resend send).

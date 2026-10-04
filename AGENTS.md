@@ -111,6 +111,15 @@ Module-specific, and each one is load-bearing:
   Making it 404 on an unknown address turns an unauthenticated endpoint into an account
   enumeration oracle. Everything address-dependent lives inside the conditional, and nothing
   follows it in the stack, so there is no shared statement whose timing or presence could differ.
+- **The lookup and the conditional run in `s.util.post_process`, never inline.** A constant body
+  is not enough: inline, a known address mints a token, writes a row and calls the mail provider
+  before the response, and an unknown one does not, so the response TIME answers the question
+  the body refuses to. Before the response there are the two limiters and nothing else;
+  `test/queries.test.ts` asserts exactly that. Like a conditional's `then`, `post_process`
+  takes a plain `Statement[]` array, positionally.
+- **A reset does not revoke auth tokens, and cannot.** Xano auth tokens are stateless, and this
+  module neither mints nor verifies them. `confirm` revokes the other outstanding RESET tokens;
+  the session limit is documented in `README.md` and `llms.txt` rather than half-solved here.
 - **`confirm` and `validate` share ONE rejection message** for unknown, spent and expired. Same
   reason. `test/queries.test.ts` asserts the three messages are one distinct string.
 - **`confirm` spends the token BEFORE it writes the password.** The other order leaves a usable
@@ -362,6 +371,21 @@ user, `emailProvider: "xano"`, probe endpoints `probe/token` and `probe/check`):
   `OTHER` fails `export({ strict: true })` on this module's `env("RESEND_API_KEY")` and
   `env("APP_URL")`; declaring both clears it. README and `llms.txt` tell consumers to declare
   them.
+
+### 2026-10-04 - ephemeral `e3bg-xmee-bc6b`, SDK 1.0.0 - `request` answers before it looks
+
+Probed after the lookup and the conditional moved into `s.util.post_process`:
+
+- **`post_process` runs AFTER the response is sent.** A probe endpoint whose only statement is
+  `post_process([s.util.sleep(3)])` answered in ~0.22s, three times running.
+- **It still sees the request.** `inp("email")` binds inside it: a known address got its token
+  row (read back through `probe/token`), and validate -> confirm -> `check_password` then worked
+  exactly as before, including the 400 on a second confirm.
+- **Known and unknown addresses now time the same.** 20 alternating pairs with `rateLimit: false`:
+  known mean 0.235s, unknown 0.224s, every response 200 `{"ok":true}`; the known mean carries one
+  0.36s outlier and the medians match. The ephemeral mailer fails fast (`"xano"` cannot send
+  there), so this UNDERSTATES the old gap - a real Resend call is an outbound HTTPS round trip -
+  and the sleep probe above is the proof that carries the claim.
 
 ### Not yet probed
 

@@ -18,11 +18,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xanots/password-reset.git"
+    "url": "git+https://github.com/xano-sdk/password-reset.git"
   },
-  "homepage": "https://github.com/xanots/password-reset#readme",
+  "homepage": "https://github.com/xano-sdk/password-reset#readme",
   "bugs": {
-    "url": "https://github.com/xanots/password-reset/issues"
+    "url": "https://github.com/xano-sdk/password-reset/issues"
   },
   "xanosdk": {
     "register": "registerPasswordReset",

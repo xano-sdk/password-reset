@@ -328,7 +328,7 @@ the ephemeral mailer cannot send at all (`"xano"` -> "Workspace admin not found"
 key was available in this environment. Re-run the delivery probe on an instance workspace before
 relying on it in production.
 
-The reason the runtime form exists at all is xanots/sdk#240: `deploy --static` mints a new host
+The reason the runtime form exists at all: `deploy --static` mints a new host
 every run, and a deploy WITHOUT `--static` deletes the one that is serving, so a build-time
 `resetUrl` can never address an ephemeral frontend. Setting `APP_URL` after the host is known is
 the only ordering that works - and since SDK 0.0.42 `xanosdk env set APP_URL` does that on the

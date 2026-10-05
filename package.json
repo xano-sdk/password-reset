@@ -1,6 +1,6 @@
 {
   "name": "@xano-sdk/password-reset",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Token-based password reset: a reset_token table, request and confirm endpoints, and the reset email sent through Resend.",
   "type": "module",
   "license": "MIT",

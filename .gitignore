@@ -8,3 +8,4 @@ local-files/
 .xano/
 workspace.json
 __pycache__/
+.live/

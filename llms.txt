@@ -19,7 +19,7 @@ npm install @xano-sdk/password-reset @xano/sdk
 ```
 
 `@xano/sdk` is a **peer dependency**, range `>=1.0.0 <2.0.0` - one shared copy only, or the
-statement and kind registries fork. This package is tested against **1.0.0** exactly:
+statement and kind registries fork. This package is tested against **1.0.19** exactly:
 that is the version its golden bundle fixture was generated against.
 
 What the golden fixture does and does not cover: it freezes the exact bytes this module

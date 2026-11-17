@@ -20,7 +20,7 @@ npm install @xano-sdk/password-reset @xano/sdk
 
 `@xano/sdk` is a **peer dependency**, range `>=1.0.0 <2.0.0`. One shared copy
 only, or the statement and kind registries fork. This package is **tested
-against 1.0.19** exactly - the version its golden bundle fixture was generated
+against 1.0.22** exactly - the version its golden bundle fixture was generated
 against.
 
 `xanosdk marketplace install @xano-sdk/password-reset` (and `xanosdk init --marketplace`) installs

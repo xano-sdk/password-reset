@@ -401,7 +401,7 @@ Probed after the lookup and the conditional moved into `s.util.post_process`:
 
 - `peerDependencies`: `>=1.0.0 <2.0.0` - floor and ceiling, written out. The ceiling is the
   next major; the floor is currently 1.0.0.
-- `devDependencies`: `1.0.19` - **exact, no caret**. It is the single version the
+- `devDependencies`: `1.0.22` - **exact, no caret**. It is the single version the
   golden fixture was generated against.
 
 Versions start at 1.0.0 and only increment 1.0.x for now, regardless of the change. Do not bump

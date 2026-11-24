@@ -1,8 +1,9 @@
 # @xano-sdk/password-reset
 
 > Token-based password reset for a Xano SDK workspace: a single-use token table,
-> three public endpoints, and the reset email sent with `s.util.send_email`
-> through Resend or Xano's built-in mailer.
+> three public endpoints, and the reset email sent through Resend, Xano's built-in
+> mailer, or any other provider (SendGrid, Postmark, Mailgun, Brevo, Loops, SES, your own
+> function) through the `sendEmail` option.
 > Registers one table (`password_reset_token`), one API group (`Password Reset`), and three
 > endpoints (`POST password_reset/request`, `/confirm`, `/validate`) onto a consumer's
 > workspace. There is no runtime: every export is a typed def object, and the consumer's
@@ -29,10 +30,13 @@ the Resend account's own rules are outside it, and need a live probe.
 
 `xanosdk marketplace install @xano-sdk/password-reset` (and `xanosdk init --marketplace`) installs
 the package but does not write the `registerPasswordReset` call: it needs `authTable`, `resetUrl`
-and `fromEmail`, which only you can answer. `init --marketplace` leaves a commented call in
+and how the app sends email, which only you can answer. `init --marketplace` leaves a commented call in
 `xano/index.ts` naming the package; fill it in as in the Quickstart below.
 
-Set the Resend key as a **workspace environment variable** named by `apiKeyEnv`
+**Pick the mailer first** - see *Sending through your email provider*. An app that already sends
+email through another provider should keep it: pass `sendEmail` and skip Resend entirely.
+
+For Resend, set the key as a **workspace environment variable** named by `apiKeyEnv`
 (default `RESEND_API_KEY`). It is read server-side with `env()`, so it is never in
 the bundle and cannot reach a frontend build. Declare the NAME with an empty value and keep
 the VALUE in the gitignored `xano/.env`; `xanosdk env set RESEND_API_KEY` (value on stdin)
@@ -45,8 +49,9 @@ const app = new Xano().registerWorkspace(workspaceConfig({ name: "my-app", env: 
 
 ⚠ Once a workspace config declares ANY env var, `export()` warns (and `--strict` fails) on every
 `env()` name it does not declare. This package reads `RESEND_API_KEY` (or your `apiKeyEnv`),
-plus `APP_URL` if you pass `resetUrl: env("APP_URL")` - declare each one you use. There is
-nothing to configure for `emailProvider: "xano"`.
+plus `APP_URL` if you pass `resetUrl: env("APP_URL")` - declare each one you use. With `sendEmail`
+it reads no Resend key: declare the names YOUR sender reads. There is nothing to configure for
+`emailProvider: "xano"`.
 
 ## Quickstart
 
@@ -104,6 +109,7 @@ Types (these erase at compile time - `import type` them and pay no bundle bytes)
 
 - `PasswordResetOptions` / `ResolvedPasswordResetOptions`
 - `EmailProvider` (`"resend" | "xano"`), `RateLimitOptions`
+- `ResetEmail` - what `sendEmail` is handed
 - `PasswordResetToken` - one `password_reset_token` row
 - `PasswordResetDefs` - what one create call minted
 - `RequestResetBody`/`RequestResetResponse`, `ConfirmResetBody`/`ConfirmResetResponse`,
@@ -143,7 +149,7 @@ usually an unset `RESEND_API_KEY`, which the engine does not name.
 a live instance: the admin got their copy, a non-admin never did, and both reported
 `status: "success"`. The built-in mailer sends AS the workspace admin, so it can only send TO
 them. A password reset mails whoever asked, so `"xano"` silently delivers nothing to every
-caller who is not the admin. **Ship on `"resend"`.**
+caller who is not the admin. **Ship on `"resend"` or your own provider through `sendEmail`.**
 
 `"xano"` is still the right keyless SMOKE TEST, with one condition: the recipient must be the
 workspace admin. If you are the admin of the instance - common when building on your own
@@ -158,19 +164,254 @@ sender. For real traffic, verify your own domain in Resend, send from it, and pu
 on it: a shared sandbox sender plus a "Reset your password" subject plus a link to an
 unrelated domain is close to a textbook phishing signature, and gets filtered.
 
+## Sending through your email provider
+
+| The app | Pass |
+|---|---|
+| has no email provider yet | `fromEmail`, and `RESEND_API_KEY` (the default, `emailProvider: "resend"`) |
+| already uses SendGrid, Postmark, Mailgun, Brevo, Loops, SES, … | `sendEmail`, from the recipe below |
+| already has a Xano function that sends its mail | `sendEmail` calling that function |
+| is a Preview smoke test, mailing the workspace admin only | `emailProvider: "xano"` |
+
+Resend, the default:
+
+```ts
+registerPasswordReset(app, {
+  authTable: userTable,
+  resetUrl: "https://app.example.com/reset",
+  fromEmail: "no-reply@your-verified-domain.com",   // key: RESEND_API_KEY in the workspace env
+});
+```
+
+Preview smoke test, no account and no key, delivered to the workspace admin and no one else:
+
+```ts
+registerPasswordReset(app, {
+  authTable: userTable,
+  resetUrl: "http://127.0.0.1:5173/",
+  emailProvider: "xano",
+});
+```
+
+Any other provider: `sendEmail` takes the message and returns the statement, or list of
+statements, that sends it. Everything else - the token, the limiters, the constant response, the
+email design - stays this package's. A whole call, with SendGrid:
+
+```ts
+import { s, c, env, fl, obj, withFilters } from "@xano/sdk";
+
+registerPasswordReset(app, {
+  authTable: userTable,
+  resetUrl: "https://app.example.com/reset",
+  fromEmail: "no-reply@your-domain.com",
+  // env: SENDGRID_API_KEY. `fromEmail` must be a bare address here.
+  sendEmail: ({ to, fromEmail, subject, html, text }) =>
+    s.api.request({
+      url: "https://api.sendgrid.com/v3/mail/send",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "your-app",
+        Authorization: withFilters(c.text("Bearer "), fl.concat(env("SENDGRID_API_KEY"))),
+      },
+      params: obj({
+        personalizations: [obj({ to: [obj({ email: to })] })],
+        from: obj({ email: fromEmail, name: c.text("Your App") }),
+        subject,
+        content: [
+          obj({ type: c.text("text/plain"), value: text }),
+          obj({ type: c.text("text/html"), value: html }),
+        ],
+        tracking_settings: obj({ click_tracking: obj({ enable: c.bool(false), enable_text: c.bool(false) }) }),
+      }),
+    }),
+});
+```
+
+Declare each name the sender reads (`SENDGRID_API_KEY` here) in `workspaceConfig({ env })`.
+
+`sendEmail` is handed a `ResetEmail`. Every field is a `Value`, usable in a header, inside
+`obj({ … })` at any depth, or as a function input:
+
+| Field | What it is |
+|---|---|
+| `to` | The account's address, read from its row |
+| `fromEmail` | The `fromEmail` option. Reading it when that option was not passed throws at build time |
+| `subject` | The `emailSubject` option |
+| `html` / `text` | The finished bodies, link included. Send both where the provider takes both |
+| `resetLink` | The whole link, `<resetUrl>?token=<token>`. For a template stored with the provider |
+| `token` | The token alone. Prefer `resetLink` |
+
+Rules, each with its failure:
+
+- **Read the key with `env("YOUR_KEY")`.** A literal lands in the bundle, and in git.
+- **Turn click tracking off.** The recipes do it per message where the provider allows it. Brevo,
+  Loops and Resend have no such switch: turn it off in the provider's dashboard. See *Constraints*.
+- **Never put a field in a JS template literal.** It is stringified at build time and mails
+  `[object Object]`. Join with `withFilters(c.text("Bearer "), fl.concat(env("KEY")))`.
+- **Never log, store or return `token`, `resetLink`, `html` or `text`**, nor the `as` variable of
+  an `s.api.request`, which mirrors the request with the key and the token in it.
+- **It runs after the response, and only for an address with an account.** It cannot change what
+  the caller sees, and a failure reaches no one: `s.api.request` does not throw on a 4xx. Check the
+  provider's log.
+- **It is called once, while the workspace is built.** Not async, and an arrow function with braces
+  needs a `return`.
+- **Do not bind `user`, `token`, `reset_link`, `reset_html` or `reset_text`** as your own `as`
+  names - an OAuth access token included. The email is read from them, so it is refused by name.
+- **Do not pass `emailProvider`, `apiKeyEnv` or `emailFormat` with it.** Each is refused by name.
+
+Recipes. Each replaces the `sendEmail` in the call above, with the same imports.
+
+Postmark:
+
+```ts
+  // env: POSTMARK_SERVER_TOKEN
+  sendEmail: ({ to, fromEmail, subject, html, text }) =>
+    s.api.request({
+      url: "https://api.postmarkapp.com/email",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "your-app",
+        "X-Postmark-Server-Token": env("POSTMARK_SERVER_TOKEN"),
+      },
+      params: obj({
+        From: fromEmail,
+        To: to,
+        Subject: subject,
+        HtmlBody: html,
+        TextBody: text,
+        TrackLinks: c.text("None"),
+      }),
+    }),
+```
+
+Mailgun:
+
+```ts
+  // env: MAILGUN_API_KEY. EU accounts use https://api.eu.mailgun.net
+  sendEmail: ({ to, fromEmail, subject, html, text }) =>
+    s.api.request({
+      url: "https://api.mailgun.net/v3/mg.your-domain.com/messages",
+      method: "POST",
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "User-Agent": "your-app",
+        Authorization: withFilters(
+          c.text("Basic "),
+          fl.concat(withFilters(c.text("api:"), fl.concat(env("MAILGUN_API_KEY")), fl.base64_encode())),
+        ),
+      },
+      // A plain object, not `obj()`, which refuses a key with a colon in it.
+      params: { from: fromEmail, to, subject, html, text, "o:tracking-clicks": "no" },
+    }),
+```
+
+Brevo:
+
+```ts
+  // env: BREVO_API_KEY. `fromEmail` must be a bare address here.
+  // No per-message switch: turn click tracking off in Brevo.
+  sendEmail: ({ to, fromEmail, subject, html, text }) =>
+    s.api.request({
+      url: "https://api.brevo.com/v3/smtp/email",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "your-app",
+        "api-key": env("BREVO_API_KEY"),
+      },
+      params: obj({
+        sender: obj({ email: fromEmail, name: c.text("Your App") }),
+        to: [obj({ email: to })],
+        subject,
+        htmlContent: html,
+        textContent: text,
+      }),
+    }),
+```
+
+Loops, or any provider whose template is stored on its side (drop `fromEmail` from the options):
+
+```ts
+  // env: LOOPS_API_KEY. The template lives in Loops, so only the link is sent.
+  // No per-message switch: turn click tracking off in Loops.
+  sendEmail: ({ to, resetLink }) =>
+    s.api.request({
+      url: "https://app.loops.so/api/v1/transactional",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "your-app",
+        Authorization: withFilters(c.text("Bearer "), fl.concat(env("LOOPS_API_KEY"))),
+      },
+      params: obj({
+        transactionalId: c.text("your-transactional-id"),
+        email: to,
+        dataVariables: obj({ resetLink }),
+      }),
+    }),
+```
+
+Amazon SES (add `import type {} from "@xano/sdk/lambda-globals"` so `aws4` typechecks):
+
+```ts
+  // env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY. Both steps run, in order.
+  // Set your SES region in BOTH places it appears.
+  // Attach no configuration set that tracks clicks.
+  sendEmail: ({ to, fromEmail, subject, html, text }) => [
+    s.set_var("ses_mail", obj({ to, from: fromEmail, subject, html, text })),
+    s.lambda({
+      as: "ses_status",
+      timeout: c.int(15),
+      code: async ({ $var, $env }) => {
+        const body = JSON.stringify({
+          FromEmailAddress: $var.ses_mail.from,
+          Destination: { ToAddresses: [$var.ses_mail.to] },
+          Content: {
+            Simple: {
+              Subject: { Data: $var.ses_mail.subject },
+              Body: { Html: { Data: $var.ses_mail.html }, Text: { Data: $var.ses_mail.text } },
+            },
+          },
+        });
+        const host = "email.us-east-1.amazonaws.com";
+        const path = "/v2/email/outbound-emails";
+        const signed = aws4.sign(
+          { service: "ses", region: "us-east-1", host, path, method: "POST", headers: { "Content-Type": "application/json" }, body },
+          { accessKeyId: $env.AWS_ACCESS_KEY_ID, secretAccessKey: $env.AWS_SECRET_ACCESS_KEY },
+        );
+        const res = await fetch(`https://${host}${path}`, { method: "POST", headers: signed.headers, body });
+        return res.status;
+      },
+    }),
+  ],
+```
+
+A function the app already sends mail with. Without `history: false` on it, its request history
+stores the link:
+
+```ts
+  // The function your app already sends mail with. Register it as usual, give it
+  // `history: false`, and turn click tracking off wherever it sends through.
+  sendEmail: ({ to, subject, html }) =>
+    s.function.run({ fn: sendAppEmail, input: { to, subject, html }, as: "mailed" }),
+```
+
 ## Options
 
 | Option | Default | Why the default is what it is |
 |---|---|---|
 | `authTable` | **required** | The table whose password is reset. Pass the def HANDLE, not a name - a bare name cannot be resolved to a guid and the column deploys dangling. |
 | `resetUrl` | **required** | Your page. The email links to `<resetUrl>?token=<token>` (`&token=` if it already has a query string). Must be http(s); any other scheme is refused, because the link goes into mail a stranger can cause to be sent. Takes a string (resolved at EXPORT time, so it cannot address a `deploy --static` host) or a `Value` such as `env("APP_URL")`, resolved at REQUEST time - see *On an EPHEMERAL, point `resetUrl` at your local dev server*. |
-| `fromEmail` | **required for Resend** | Resend refuses a sender on an unverified domain, and that failure surfaces at send time - on a real user's reset. Optional for `"xano"`. |
+| `fromEmail` | **required for Resend** | Resend refuses a sender on an unverified domain, and that failure surfaces at send time - on a real user's reset. Optional for `"xano"`. With `sendEmail`, required only if your sender reads it. |
 | `emailProvider` | `"resend"` | `"xano"` is the built-in mailer: no key, no verified sender, no configuration. Right for a prototype and for a test that must not depend on a third-party account. |
-| `apiKeyEnv` | `"RESEND_API_KEY"` | Read server-side with `env()`. Ignored for `"xano"`. |
+| `sendEmail` | unset | `(email) => Statement \| Statement[]`. Sends through any other provider in place of `emailProvider` - see *Sending through your email provider*. |
+| `apiKeyEnv` | `"RESEND_API_KEY"` | The Resend key's variable. Read server-side with `env()`. Ignored for `"xano"`, refused with `sendEmail`. |
 | `tokenTtlSeconds` | `3600` | Bounded 60s..7d. A reset token is a bearer credential for one account, so an unbounded lifetime is a second password sitting in an inbox. |
 | `rateLimit` | `{ max: 5, ttl: 900 }` | Every endpoint here is unauthenticated, one SENDS MAIL, and the other two are the brute-force surface for a token that changes a password. `false` is the explicit opt-out; the step stays in the stack, disabled. |
 | `emailSubject` / `emailIntro` / `emailOutro` | sensible English | The default intro names the expiry in minutes. `emailSubject` is also the heading. |
-| `emailFormat` | `"html"` | The styled document. `"text"` for plain text. The engine has ONE `message` field, so an HTML send carries no plain-text alternative. |
+| `emailFormat` | `"html"` | The styled document. `"text"` for plain text. The engine has ONE `message` field, so an HTML send carries no plain-text alternative. Refused with `sendEmail`, which is handed both. |
 | `emailButtonLabel` | `"Choose a new password"` | HTML only. |
 | `brandName` | unset | Short product name above the heading; the block is omitted entirely when unset. |
 | `brandColor` | `"#18181b"` | Button and link colour, hex only - it lands in a `style` attribute. Button text is white, so a pale accent is unreadable. |
@@ -190,8 +431,8 @@ Every consumer-supplied string is HTML-escaped into it at build time.
 
 Do not rebuild this document yourself with `c.text(...)` and a template literal: a template
 literal cannot compose a tagged value, so `` c.text(`…${ref("token")}…`) `` type-checks and
-mails `[object Object]`. If you need a different design, change the parts in
-`src/api/email-template.ts` - they are joined around the token, never interpolated.
+mails `[object Object]`. If you need a different design, pass `sendEmail` and send your own
+template around `resetLink`.
 
 ## Calling the endpoints from a typed client
 
@@ -460,10 +701,12 @@ a static host and a backend on the instance work together as-is.
   path (`…awstrack.me/L0/https:%2F%2F…%3Ftoken=<token>/1/…`, observed in a real Resend send).
   That both breaks the link for anyone running a blocker AND hands a bearer credential for the
   account to a third party, which undoes the internal column, the single use and the expiry at a
-  stroke. This module cannot prevent it - `s.util.send_email` has no per-send tracking flag - so
-  it is a setting the consumer must change, and one worth raising unprompted. Same for a URL
+  stroke. For Resend this module cannot prevent it - `s.util.send_email` has no per-send tracking
+  flag - so it is a setting the consumer must change, and one worth raising unprompted. With
+  `sendEmail`, keep the line in the recipe that turns it off. Same for a URL
   shortener or a "safe links" gateway.
-- **Set `apiKeyEnv`'s variable in the WORKSPACE environment, never in the bundle.** Declare the
+- **Set the provider key (`apiKeyEnv`'s variable, or the one your `sendEmail` reads) in the
+  WORKSPACE environment, never in the bundle.** Declare the
   name empty in `workspaceConfig({ env })`, keep the value in `xano/.env`, and change it live with
   `xanosdk env set`. A static host serves everything injected into a frontend build
   (`--static-env` included), so a key there is public.

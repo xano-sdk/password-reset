@@ -1,8 +1,8 @@
 # @xano-sdk/password-reset
 
 Token-based password reset for a Xano SDK workspace, as typed def objects: a
-single-use token table, three public endpoints, and the reset email sent with
-`s.util.send_email` through **Resend** or Xano's built-in mailer.
+single-use token table, three public endpoints, and the reset email sent through
+**Resend**, Xano's built-in mailer, or **the provider you already use**.
 
 There is no runtime. `table()`, `query()` and `apiGroup()` are identity
 functions - this package hands your `Xano` instance def objects, and your
@@ -25,8 +25,11 @@ against.
 
 `xanosdk marketplace install @xano-sdk/password-reset` (and `xanosdk init --marketplace`) installs
 the package but does not write the `registerPasswordReset` call: it needs `authTable`, `resetUrl`
-and `fromEmail`, which only you can answer. `init --marketplace` leaves a commented call in
+and how your app sends email, which only you can answer. `init --marketplace` leaves a commented call in
 `xano/index.ts` naming the package; fill it in as in the Quickstart below.
+
+Already sending email through another provider? Skip Resend and go to
+[Using your own email provider](#using-your-own-email-provider).
 
 For Resend, set the API key as a **workspace environment variable** (default
 name `RESEND_API_KEY`). It is read server-side with `env()`, so it never enters
@@ -44,8 +47,9 @@ const app = new Xano().registerWorkspace(
 To change the live value without a deploy: `xanosdk env set RESEND_API_KEY`
 (the value is read from stdin). Once your config declares any env var, `export()`
 warns about every `env()` name it does not declare - this package reads
-`RESEND_API_KEY`, and `APP_URL` if you use the runtime `resetUrl` below - so
-declare the ones you use.
+`RESEND_API_KEY` (not with `sendEmail`, where it reads only what your sender
+reads), and `APP_URL` if you use the runtime `resetUrl` below - so declare the
+ones you use.
 
 ## Quickstart
 
@@ -206,15 +210,16 @@ lands in.
 |---|---|---|
 | `authTable` | **required** | The table whose password is reset. Pass the def HANDLE. |
 | `resetUrl` | **required** | Your page. `<resetUrl>?token=<token>`, or `&token=` when it already has a query string. A string must be `http:`/`https:` and is resolved at export time; a `Value` (`env("APP_URL")`) is resolved at request time. On an ephemeral, see [On an ephemeral, point `resetUrl` at your local dev server](#on-an-ephemeral-point-reseturl-at-your-local-dev-server). |
-| `fromEmail` | **required for Resend** | Resend refuses a sender on an unverified domain. Optional for `"xano"`. |
+| `fromEmail` | **required for Resend** | Resend refuses a sender on an unverified domain. Optional for `"xano"`. With `sendEmail`, required only if your sender reads it. |
 | `emailProvider` | `"resend"` | `"xano"` is the built-in mailer - no key, no verified sender. |
-| `apiKeyEnv` | `"RESEND_API_KEY"` | Workspace env var, read with `env()`. Ignored for `"xano"`. |
+| `sendEmail` | unset | Sends through any other provider, in place of `emailProvider`. See [Using your own email provider](#using-your-own-email-provider). |
+| `apiKeyEnv` | `"RESEND_API_KEY"` | The Resend key's workspace env var, read with `env()`. Ignored for `"xano"`, refused with `sendEmail`. |
 | `tokenTtlSeconds` | `3600` | Bounded 60s..7d. |
 | `rateLimit` | `{ max: 5, ttl: 900 }` | `false` opts out; the step stays in the stack, disabled. |
 | `emailSubject` | `"Reset your password"` | Also the heading inside the email. |
 | `emailIntro` | names the expiry in minutes | The line above the button. |
 | `emailOutro` | "if you did not ask for this…" | The line below the rule. |
-| `emailFormat` | `"html"` | `"text"` sends plain text. One `message` field on the engine, so HTML carries no text alternative. |
+| `emailFormat` | `"html"` | `"text"` sends plain text. One `message` field on the engine, so HTML carries no text alternative. Refused with `sendEmail`, which is handed both. |
 | `emailButtonLabel` | `"Choose a new password"` | HTML only. |
 | `brandName` | unset | A short product name above the heading. Omitted entirely when unset. |
 | `brandColor` | `"#18181b"` | Button and link colour. Hex only - it lands in a `style` attribute. Button text is white, so pick something with contrast. |
@@ -247,6 +252,80 @@ correctness boundary rather than a security one, since these come from your
 config and not from a request, but it means an ampersand in your product name
 does not break the markup.
 
+### Using your own email provider
+
+Pass `sendEmail` and keep the provider your app already has. It takes the finished
+message and returns the statement, or list of statements, that sends it. The token,
+the rate limiters, the constant response and the email design stay this package's.
+With SendGrid:
+
+```ts
+import { s, c, env, fl, obj, withFilters } from "@xano/sdk";
+
+registerPasswordReset(app, {
+  authTable: userTable,
+  resetUrl: "https://app.example.com/reset",
+  fromEmail: "no-reply@your-domain.com",
+  // env: SENDGRID_API_KEY. `fromEmail` must be a bare address here.
+  sendEmail: ({ to, fromEmail, subject, html, text }) =>
+    s.api.request({
+      url: "https://api.sendgrid.com/v3/mail/send",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "your-app",
+        Authorization: withFilters(c.text("Bearer "), fl.concat(env("SENDGRID_API_KEY"))),
+      },
+      params: obj({
+        personalizations: [obj({ to: [obj({ email: to })] })],
+        from: obj({ email: fromEmail, name: c.text("Your App") }),
+        subject,
+        content: [
+          obj({ type: c.text("text/plain"), value: text }),
+          obj({ type: c.text("text/html"), value: html }),
+        ],
+        tracking_settings: obj({ click_tracking: obj({ enable: c.bool(false), enable_text: c.bool(false) }) }),
+      }),
+    }),
+});
+```
+
+[llms.txt](llms.txt) has the same for **Postmark, Mailgun, Brevo, Loops, Amazon SES**
+and a **function your app already sends mail with**. Each was run on a local Xano
+Engine against a capture server, which shows the request it makes; none has been
+sent through a live account, so send yourself a reset before you ship.
+
+| Field | What it is |
+|---|---|
+| `to` | The account's address, read from its row. |
+| `fromEmail` | The `fromEmail` option. Reading it when that option was not passed is a build-time error. |
+| `subject` | The `emailSubject` option. |
+| `html`, `text` | The finished bodies, link included. Send both where the provider takes both. |
+| `resetLink` | The whole link, for a template stored with the provider. |
+| `token` | The token alone. Prefer `resetLink`. |
+
+Every field is a `Value`: put it in a header, in `obj({ … })` at any depth, or in an
+`s.function.run` input. Never put one in a JS template literal, which stringifies it
+at build time and mails `[object Object]`.
+
+- **Read the key with `env()`**, and declare its name in `workspaceConfig({ env })`.
+  A literal key lands in the bundle.
+- **Turn click tracking off.** It hands the token to a third party; see
+  [Read before production](#read-before-production). The SendGrid, Postmark and
+  Mailgun recipes do it per message. Everywhere else it is the provider's dashboard.
+- **Do not log, store or return** the token, the link or either body, nor the `as`
+  variable of an `s.api.request`, which mirrors the whole request. If `sendEmail`
+  calls a function, set `history: false` on it.
+- **Failures are silent.** It runs after the response, and `s.api.request` does not
+  throw on a 4xx. Your provider's log is where to look.
+- **It is called once, while the workspace is built**, so it cannot be async. A
+  sender that returns no statement is refused by name.
+- **`user`, `token`, `reset_link`, `reset_html` and `reset_text` are taken** as
+  variable names. The email is read from them, so a sender that binds one is
+  refused.
+- `emailProvider`, `apiKeyEnv` and `emailFormat` cannot be combined with it, and each
+  is refused by name rather than ignored.
+
 ### Testing without a Resend account
 
 `emailProvider: "xano"` uses Xano's built-in mailer and needs **no API key and
@@ -263,7 +342,7 @@ So it is a real smoke test with one condition attached:
   that, or get your own Resend key. Testing against any other address will look
   like it worked and deliver nothing.
 
-Either way, ship on `"resend"`.
+Either way, ship on `"resend"` or on your own provider through `sendEmail`.
 
 ## The frontend
 
@@ -409,9 +488,10 @@ you rely on it.
   nothing else.
 - **On an ephemeral environment `"xano"` fails outright**, with
   `"Workspace admin not found"` - an ephemeral tenant has no admin to send as.
-- **The email is HTML, and there is no plain-text alternative.** The engine's
+- **On `"resend"` and `"xano"` the email is HTML, with no plain-text alternative.** The engine's
   statement has one `message` field, so an HTML send is HTML only. Clients that
-  refuse HTML get the markup. `emailFormat: "text"` exists for that case.
+  refuse HTML get the markup. `emailFormat: "text"` exists for that case, and
+  `sendEmail` is handed both.
 - **Turn OFF click tracking on your sending domain.** This is the one item on
   this list that is a security bug if you skip it. Resend (and SES, Mailgun,
   SendGrid, Postmark) rewrite every link in a message through a tracking domain,
@@ -422,9 +502,11 @@ you rely on it.
   corporate filters, so a user with a blocker cannot reset their password at
   all. And the token - a bearer credential for one account - is handed to a
   third party and logged there, which undoes the `internal` column, the single
-  use, and the short expiry in one step. This module cannot prevent it:
+  use, and the short expiry in one step. For Resend this module cannot prevent it:
   `s.util.send_email` has no per-send tracking flag, so it is a setting on your
-  sending domain. The same applies to any URL shortener or "safe links" email
+  sending domain. With `sendEmail`, SendGrid, Postmark and Mailgun take a
+  per-message switch, and the recipes set it; elsewhere it is the provider's
+  dashboard. The same applies to any URL shortener or "safe links" email
   gateway in the path.
 - **Deliverability depends on your sender and link domains being coherent.** A
   message from a shared sandbox sender, with the subject "Reset your password"

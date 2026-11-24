@@ -21,7 +21,6 @@ import {
   c,
   ref,
   inp,
-  env,
   input,
   expr,
   withFilters,
@@ -31,7 +30,7 @@ import {
 } from "@xano/sdk";
 import type { ResolvedPasswordResetOptions } from "../options.js";
 import { rateLimitStatement } from "./rate-limit.js";
-import { messageValue } from "./email-template.js";
+import { sendEmailStatements } from "./send-email.js";
 
 export const createRequestResetQuery = (
   group: ApiGroupDef,
@@ -101,24 +100,9 @@ export const createRequestResetQuery = (
               },
               as: "reset",
             }),
-            s.util.send_email({
-              // Read back from the row, never echoed from the input: this is the
-              // address the account actually has.
-              to: ref(`user.${options.emailColumn}`),
-              ...(options.fromEmail === undefined ? {} : { from: c.text(options.fromEmail) }),
-              subject: c.text(options.emailSubject),
-              // A JS template literal CANNOT compose a tagged value - it
-              // stringifies it at build time and mails "[object Object]". The
-              // document's literal halves are assembled at build time in
-              // email-template.ts; the token is joined at RUNTIME, by the filter
-              // chain, once per place it appears.
-              message: messageValue(options, "token"),
-              service_provider: options.emailProvider,
-              // The key is read server-side out of the workspace environment. It
-              // is never in the bundle, so it cannot reach a frontend build.
-              ...(options.emailProvider === "resend" ? { api_key: env(options.apiKeyEnv) } : {}),
-              as: "sent",
-            }),
+            // Resend, the built-in mailer, or the consumer's own provider. Spread
+            // here and only here: a nested `then` is `Statement[]` already.
+            ...sendEmailStatements(options),
           ],
         }),
       ]),

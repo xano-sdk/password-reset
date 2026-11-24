@@ -114,6 +114,13 @@ export function foldSegments(segments: MessageSegment[]): MessageParts {
   return { parts, slots };
 }
 
+/**
+ * The reset link on its own, `<resetUrl>?token=<token>`, for a custom sender.
+ * Unescaped: it is a URL, and whatever document it lands in owns the escaping.
+ */
+export const linkParts = (options: ResolvedPasswordResetOptions): MessageParts =>
+  foldSegments([...linkSegments(options), TOKEN_SLOT]);
+
 /** The plain-text body. One token, so two parts (three when the URL is runtime). */
 export function textBody(options: ResolvedPasswordResetOptions): MessageParts {
   return foldSegments([
@@ -231,15 +238,18 @@ export const messageParts = (options: ResolvedPasswordResetOptions): MessagePart
   options.emailFormat === "html" ? htmlBody(options) : textBody(options);
 
 /**
- * The `message` value: the literal parts joined with the token between them, at
- * RUNTIME, through the filter chain.
+ * One runtime value out of a split document: the literal parts joined with the
+ * token between them, at RUNTIME, through the filter chain.
  *
  * The chain is built from an array, which is safe here in a way it would not be
  * in a query's `stack`: this produces one `Value`, and the tuple rule is about
  * the statement list. Nothing about the response type passes through it.
  */
-export function messageValue(options: ResolvedPasswordResetOptions, tokenVar: string): Value {
-  const { parts, slots } = messageParts(options);
+export function joinParts(
+  options: ResolvedPasswordResetOptions,
+  { parts, slots }: MessageParts,
+  tokenVar: string,
+): Value {
   const [first, ...rest] = parts;
   // A slot is the token, or - only when `resetUrl` was passed as a Value - the
   // reset URL itself, resolved at request time. `withFilters` on the caller's

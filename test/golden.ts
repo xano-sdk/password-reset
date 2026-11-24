@@ -48,10 +48,11 @@ export const GOLDEN_COVERAGE = {
    * Every option, each pinned to its NON-default value, so the fixture freezes
    * the branch a default-only config would never reach.
    *
-   * The two branches a single bundle cannot hold at once - `emailProvider:
-   * "xano"` (which emits no `api_key`) and `rateLimit: false` (which emits the
-   * limiter disabled) - are asserted at encode level in `queries.test.ts`
-   * instead. Encoding them here would mean shipping a golden with the LESS safe
+   * The branches a single bundle cannot hold at once - `emailProvider: "xano"`
+   * (which emits no `api_key`), `rateLimit: false` (which emits the limiter
+   * disabled) and `sendEmail` (which replaces the send) - are asserted at
+   * encode level in `queries.test.ts` and `senders.test.ts` instead. Encoding
+   * the first two here would mean shipping a golden with the LESS safe
    * configuration frozen into it.
    */
   options: [

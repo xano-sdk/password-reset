@@ -6,7 +6,7 @@
  * which option was wrong - the consumer gets a stack trace through the encoder
  * instead of a sentence naming their mistake.
  */
-import type { TableDef, Value } from "@xano/sdk";
+import type { Statement, TableDef, Value } from "@xano/sdk";
 
 /**
  * Is this a tagged `Value` - `env("APP_URL")`, `c.text(…)`, `inp(…)` - rather
@@ -41,6 +41,38 @@ export interface RateLimitOptions {
   max: number;
   /** Window length, in seconds. */
   ttl: number;
+}
+
+/**
+ * The message a custom `sendEmail` is handed.
+ *
+ * Every field is a `Value`, so it goes straight into a statement: a header, a
+ * member of `obj({ … })` at any depth, an `s.function.run` input. Never put one
+ * in a JS template literal, which stringifies it at build time and mails
+ * `[object Object]`. To join one with other text, use
+ * `withFilters(c.text("…"), fl.concat(value))`.
+ */
+export interface ResetEmail {
+  /** The address the account has, read from its row. Never the submitted one. */
+  to: Value;
+  /** The `fromEmail` option. Reading it when the option was not passed is a build-time error. */
+  readonly fromEmail: Value;
+  /** The `emailSubject` option. */
+  subject: Value;
+  /** The styled document, with the link already in it. */
+  html: Value;
+  /** The plain-text body, with the link already in it. Send both where the provider takes both. */
+  text: Value;
+  /** The whole link, `<resetUrl>?token=<token>`, for a template stored with the provider. */
+  resetLink: Value;
+  /**
+   * The token alone. Prefer `resetLink`.
+   *
+   * ⚠ A bearer credential for one account, as `html`, `text` and `resetLink`
+   * also are. Send it to the recipient and nowhere else: not to a log, not to a
+   * table, not to analytics.
+   */
+  token: Value;
 }
 
 /** What a consumer passes to {@link registerPasswordReset}. */
@@ -116,6 +148,8 @@ export interface PasswordResetOptions {
    *
    * Optional for `emailProvider: "xano"` - the built-in mailer supplies its own
    * sender and needs no verified domain.
+   *
+   * With `sendEmail`, required only if your sender reads it.
    */
   fromEmail?: string;
 
@@ -125,8 +159,55 @@ export interface PasswordResetOptions {
    * `"xano"` is the built-in mailer: no API key, no verified sender, no
    * configuration. It is the right choice for a prototype and for a test that
    * must not depend on a third-party account.
+   *
+   * For any other provider, pass `sendEmail` instead. Passing both is refused.
    */
   emailProvider?: EmailProvider;
+
+  /**
+   * Send the email through a provider of your own, in place of `emailProvider`.
+   *
+   * Called ONCE, while the workspace is built, with the message as `Value`s.
+   * Return the statement or statements that send it:
+   *
+   * ```ts
+   * sendEmail: ({ to, fromEmail, subject, html, text }) =>
+   *   s.api.request({
+   *     url: "https://api.postmarkapp.com/email",
+   *     method: "POST",
+   *     headers: {
+   *       "Content-Type": "application/json",
+   *       "X-Postmark-Server-Token": env("POSTMARK_SERVER_TOKEN"),
+   *     },
+   *     params: obj({
+   *       From: fromEmail,
+   *       To: to,
+   *       Subject: subject,
+   *       HtmlBody: html,
+   *       TextBody: text,
+   *       TrackLinks: c.text("None"),
+   *     }),
+   *   })
+   * ```
+   *
+   * They run in `post_process`, only for an address that has an account, so
+   * nothing they do can change the response. Three rules come with that:
+   *
+   * - **Read the key with `env()`.** A literal key lands in the bundle.
+   * - **Turn click tracking OFF**, per message where the provider allows it
+   *   (`TrackLinks` above) and on the sending domain where it does not. It
+   *   rewrites the link through a third party with the token inside it.
+   * - **Nobody is told about a failure.** `s.api.request` does not throw on a
+   *   4xx, and the response has already gone out. Watch your provider's log.
+   *
+   * `user`, `token`, `reset_link`, `reset_html` and `reset_text` are taken as
+   * variable names. A sender that binds one is refused: the email is read from
+   * them.
+   *
+   * Not combinable with `emailProvider` or `apiKeyEnv` (your sender picks both),
+   * nor with `emailFormat` (it is handed `html` AND `text`).
+   */
+  sendEmail?: (email: ResetEmail) => Statement | readonly Statement[];
 
   /**
    * The workspace environment variable holding the Resend API key. Default
@@ -137,7 +218,7 @@ export interface PasswordResetOptions {
    * in `xano/.env`; `xanosdk env set <name>` changes it live. Once a config
    * declares any env var, `export()` warns on an `env()` name it does not.
    *
-   * Ignored when `emailProvider` is `"xano"`.
+   * Ignored when `emailProvider` is `"xano"`, and refused with `sendEmail`.
    */
   apiKeyEnv?: string;
 
@@ -227,8 +308,11 @@ export interface ResolvedPasswordResetOptions {
   /** A string (validated, escaped, folded at build time) or a runtime `Value`. */
   resetUrl: string | Value;
   fromEmail: string | undefined;
+  /** Unused when `sendEmail` is set. */
   emailProvider: EmailProvider;
+  /** Unused when `sendEmail` is set. */
   apiKeyEnv: string;
+  sendEmail: PasswordResetOptions["sendEmail"];
   emailSubject: string;
   emailIntro: string;
   emailOutro: string;
@@ -301,7 +385,7 @@ const columnTypeOf = (authTable: TableDef, column: string): string | null => {
   return typeof type === "string" ? type : null;
 };
 
-const fail = (message: string): never => {
+export const fail = (message: string): never => {
   throw new Error(`registerPasswordReset: ${message}`);
 };
 
@@ -359,12 +443,32 @@ export function resolveOptions(options: PasswordResetOptions): ResolvedPasswordR
     }
   }
 
+  if (options.sendEmail !== undefined) {
+    if (typeof options.sendEmail !== "function") {
+      fail("`sendEmail` must be a function that returns the statements that send the email.");
+    }
+    // Refused rather than ignored: each of these says something about the send
+    // that a custom sender decides for itself, so accepting one would let it
+    // read as configured while doing nothing.
+    const unused = ([
+      ["emailProvider", "`sendEmail` replaces the provider"],
+      ["apiKeyEnv", "read your own key inside `sendEmail` with `env(\"YOUR_KEY\")`"],
+      ["emailFormat", "`sendEmail` is handed both `html` and `text`"],
+    ] as const).filter(([option]) => options[option] !== undefined);
+    if (unused.length > 0) {
+      fail(
+        `${unused.map(([option, why]) => `\`${option}\` cannot be combined with \`sendEmail\` (${why})`).join("; ")}. ` +
+          "Remove it.",
+      );
+    }
+  }
+
   const emailProvider = options.emailProvider ?? "resend";
   if (emailProvider !== "resend" && emailProvider !== "xano") {
     fail(
       `\`emailProvider\` must be "resend" or "xano", not "${String(options.emailProvider)}". ` +
         "The engine takes these two and nothing else, and an unrecognised one deploys clean " +
-        "and then fails the first send.",
+        "and then fails the first send. For any other provider, pass `sendEmail`.",
     );
   }
 
@@ -373,7 +477,7 @@ export function resolveOptions(options: PasswordResetOptions): ResolvedPasswordR
     if (!from.includes("@")) {
       fail(`\`fromEmail\` "${from}" is not an address. Pass "Name <you@your-domain.com>" or "you@your-domain.com".`);
     }
-  } else if (emailProvider === "resend") {
+  } else if (emailProvider === "resend" && options.sendEmail === undefined) {
     fail(
       "`fromEmail` is required when `emailProvider` is \"resend\". Resend refuses a sender on an " +
         "unverified domain, and that failure surfaces at send time as a provider 4xx - long " +
@@ -517,6 +621,7 @@ export function resolveOptions(options: PasswordResetOptions): ResolvedPasswordR
     fromEmail: options.fromEmail,
     emailProvider,
     apiKeyEnv,
+    sendEmail: options.sendEmail,
     emailSubject: options.emailSubject === undefined ? "Reset your password" : requireIdentifier(options.emailSubject, "emailSubject"),
     emailIntro:
       options.emailIntro === undefined

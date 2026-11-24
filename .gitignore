@@ -9,3 +9,5 @@ local-files/
 workspace.json
 __pycache__/
 .live/
+# The CLI writes this beside an entry that declares env vars.
+test/live/.env.example

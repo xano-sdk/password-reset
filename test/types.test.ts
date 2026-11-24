@@ -22,10 +22,11 @@
  * first.
  */
 import { describe, it, expectTypeOf } from "vitest";
-import type { StackTupleWidened } from "@xano/sdk";
+import type { StackTupleWidened, Statement, Value } from "@xano/sdk";
 import type {
   PasswordResetToken,
   PasswordResetOptions,
+  ResetEmail,
   RequestResetBody,
   RequestResetResponse,
   ConfirmResetBody,
@@ -110,6 +111,7 @@ describe("options", () => {
         | "fromEmail"
         | "emailProvider"
         | "apiKeyEnv"
+        | "sendEmail"
         | "emailSubject"
         | "emailIntro"
         | "emailOutro"
@@ -129,6 +131,15 @@ describe("options", () => {
 
   it("narrows the provider to the two the engine takes", () => {
     expectTypeOf<PasswordResetOptions["emailProvider"]>().toEqualTypeOf<"resend" | "xano" | undefined>();
+  });
+
+  it("takes a sender returning one statement or a list, and hands it Values", () => {
+    type Sender = NonNullable<PasswordResetOptions["sendEmail"]>;
+    expectTypeOf<(email: ResetEmail) => Statement>().toMatchTypeOf<Sender>();
+    expectTypeOf<(email: ResetEmail) => readonly [Statement, Statement]>().toMatchTypeOf<Sender>();
+    expectTypeOf<(email: ResetEmail) => Promise<Statement>>().not.toMatchTypeOf<Sender>();
+    expectTypeOf<(email: ResetEmail) => void>().not.toMatchTypeOf<Sender>();
+    expectTypeOf<ResetEmail[keyof ResetEmail]>().toEqualTypeOf<Value>();
   });
 
   it("lets the limiter be turned off only with an explicit false", () => {

@@ -1,7 +1,8 @@
 /**
  * @xano-sdk/password-reset - token-based password reset for a Xano SDK workspace:
  * a single-use token table, request/validate/confirm endpoints, and the reset
- * email sent with `s.util.send_email` through Resend or Xano's built-in mailer.
+ * email sent through Resend, Xano's built-in mailer, or any provider through
+ * the `sendEmail` option.
  *
  * This file is the WHOLE public surface. A consumer importing a deep path is
  * importing something this package never promised to keep.
@@ -18,6 +19,7 @@ export type {
   PasswordResetOptions,
   ResolvedPasswordResetOptions,
   EmailProvider,
+  ResetEmail,
   RateLimitOptions,
 } from "./options.js";
 

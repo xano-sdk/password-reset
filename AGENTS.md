@@ -35,6 +35,8 @@ Changing `.github/scripts/` or `.github/RELEASE_TEMPLATE.md`: `cd .github/script
 - `src/options.ts` - public option types and `resolveOptions`: the single validation gate.
 - `src/tables/` - one table def factory per file.
 - `src/api/` - the API group and the endpoints; `client-types.ts` is type-level only.
+- `src/api/send-email.ts` - the send: `s.util.send_email`, or the consumer's `sendEmail` statements.
+- `test/senders.ts` - the `sendEmail` recipes, as code. Each region is VERBATIM in `llms.txt`.
 - `test/` - the suites. `helpers.ts` holds every shared fixture; `golden.ts` defines how the
   golden bundle is built and serialized.
 - `scripts/regen-golden.ts` - writes the fixture. Typechecked with `src`, published nowhere.
@@ -86,8 +88,8 @@ agent, and most of these fail in someone ELSE's repo rather than in this one.
   version instead of the whole window. Check the rule after any floor move: a helper that mirrors
   an SDK internal must still match what every version in the window computes.
 - **The `"xanosdk"` block in `package.json` declares `register` and `returns` and omits `options`,
-  on purpose.** `registerPasswordReset` needs `authTable`, `resetUrl` and `fromEmail`, and the
-  last two can only be answered by the consumer. `options` is all or nothing: declaring just
+  on purpose.** `registerPasswordReset` needs `authTable`, `resetUrl`, and `fromEmail` or
+  `sendEmail`, and all but the first can only be answered by the consumer. `options` is all or nothing: declaring just
   `authTable` would be read as the whole argument and get a call written that does not compile.
   Omitted, `xanosdk init --marketplace` reads the function's arity, keeps the module out of the
   generated `xano/index.ts`, and leaves a commented call. `returns` is `"handle"` because the
@@ -118,6 +120,27 @@ Module-specific, and each one is load-bearing:
   the body refuses to. Before the response there are the two limiters and nothing else;
   `test/queries.test.ts` asserts exactly that. Like a conditional's `then`, `post_process`
   takes a plain `Statement[]` array, positionally.
+- **`emailProvider` is the ENGINE's enum, and stays `"resend" | "xano"`.** Any other provider is
+  `sendEmail`. A preset per provider would put each one's request shape, host and account rules in
+  this package's API, where a change on their side is a release here; a recipe is the consumer's.
+- **`sendEmail` goes in the conditional, in `post_process`, and nowhere else.** A consumer's
+  statement before the response is the enumeration oracle again, with a name on it.
+- **A custom sender is handed `ref()`s, never the chains that compose them.** The link and both
+  bodies are bound with `s.set_var` first. A filtered value cannot be a filter argument inside
+  `obj()`, and a runtime `resetUrl` may carry filters, so a chain would compose in one slot and
+  throw in another.
+- **`sendEmail`'s result is checked in `send-email.ts`, not in `resolveOptions`** - a deviation from
+  the single gate, because it has to be called to be checked. No statements at all is refused: it
+  deploys clean, answers 200 and mails no one.
+- **`ResetEmail.fromEmail` is a throwing, non-enumerable getter when the option is absent.** Whether
+  it is required is the sender's answer, and a spread is not a read of it.
+- **A sender may not bind a variable the email is read from.** The refs are read when the send runs,
+  so `as: "user"` or `as: "token"` in it redirects or blanks the mail, exporting clean under
+  `--strict`. `reboundVars` refuses it, nested blocks included.
+- **`obj()` refuses a key that is not a bare identifier**, so Mailgun's `o:tracking-clicks` needs
+  the plain-object form of `params`. Only a run caught it: it typechecks.
+- **A recipe's click-tracking line is load-bearing.** `test/senders.test.ts` asserts its ENCODED
+  value, not its text, so commenting it out fails.
 - **A reset does not revoke auth tokens, and cannot.** Xano auth tokens are stateless, and this
   module neither mints nor verifies them. `confirm` revokes the other outstanding RESET tokens;
   the session limit is documented in `README.md` and `llms.txt` rather than half-solved here.
@@ -388,7 +411,25 @@ Probed after the lookup and the conditional moved into `s.util.post_process`:
   there), so this UNDERSTATES the old gap - a real Resend call is an outbound HTTPS round trip -
   and the sleep probe above is the proof that carries the claim.
 
+### 2026-11-24 - local Xano Engine v0.2.17, SDK 1.0.19 - `sendEmail`
+
+`npm run test:live` now runs the whole flow twice, the second time with a `sendEmail` posting to a
+capture server in the script. Then each recipe in `test/senders.ts` was run the same way, with the
+provider's host swapped for the capture server, and the `function` recipe's function posting to it:
+
+- **The three parts resolve in every slot used**: a flat and a nested `obj()`, an array inside one, a
+  multipart form, and a lambda's `$var`. The link was whole at all three sites in the HTML.
+- **`env()` resolves in a header and through `fl.base64_encode()`**, and `$env` in the SES lambda.
+- **A 422 from the provider changed nothing**: the caller had `200 {"ok":true}` already. An unknown
+  address produced no call at all.
+- **`Content-Type: multipart/form-data` on `s.api.request` gets its boundary from the engine.**
+- **`aws4` is available in a lambda** and signs for SES. The signature was not checked by AWS.
+
+Scope: this proves the REQUEST, not delivery. No recipe has been sent through a live account.
+
 ### Not yet probed
+
+- **A `sendEmail` recipe through a real provider.** See above.
 
 - **Rendering outside Gmail.** The document is table-based with inline styles for exactly this
   reason, but Outlook, Apple Mail and the mobile clients have not been looked at.

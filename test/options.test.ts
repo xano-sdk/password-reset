@@ -6,7 +6,7 @@
  * throw with no way to know which option was wrong.
  */
 import { describe, it, expect } from "vitest";
-import { table, f, env } from "@xano/sdk";
+import { table, f, env, s, c } from "@xano/sdk";
 import { DEFAULT_RATE_LIMIT, resolveOptions } from "../src/options.js";
 import { baseOptions, renamedColumnAuthTable, testAuthTable } from "./helpers.js";
 
@@ -93,6 +93,11 @@ describe("resolveOptions - the mailer", () => {
     expect(() => resolveOptions({ ...base, emailProvider: "sendgrid" } as never)).toThrow(/emailProvider/);
   });
 
+  it("points an unknown provider at sendEmail", () => {
+    // The likeliest reason anyone lands here is that they already use another provider.
+    expect(() => resolveOptions({ ...base, emailProvider: "sendgrid" } as never)).toThrow(/pass `sendEmail`/);
+  });
+
   it("rejects an apiKeyEnv that is not an environment variable name", () => {
     // It is rendered into `$env.NAME` verbatim, so anything else reads as a
     // different expression at runtime.
@@ -103,6 +108,54 @@ describe("resolveOptions - the mailer", () => {
   it("names the expiry in the default email body", () => {
     expect(resolveOptions({ ...base, tokenTtlSeconds: 3600 }).emailIntro).toContain("60 minutes");
     expect(resolveOptions({ ...base, tokenTtlSeconds: 60 }).emailIntro).toContain("1 minute.");
+  });
+});
+
+describe("resolveOptions - a custom sender", () => {
+  const sendEmail = () => s.set_var("sent", c.bool(true));
+
+  it("keeps the function, and does not require a fromEmail", () => {
+    const resolved = resolveOptions({ ...base, fromEmail: undefined, sendEmail });
+    expect(resolved.sendEmail).toBe(sendEmail);
+    expect(resolved.fromEmail).toBeUndefined();
+  });
+
+  it("is off by default", () => {
+    expect(resolveOptions({ ...base }).sendEmail).toBeUndefined();
+  });
+
+  it("still checks a fromEmail that IS passed", () => {
+    expect(() => resolveOptions({ ...base, fromEmail: "no-reply", sendEmail })).toThrow(/not an address/);
+  });
+
+  it("rejects anything that is not a function", () => {
+    expect(() => resolveOptions({ ...base, sendEmail: "sendgrid" } as never)).toThrow(/`sendEmail` must be a function/);
+    expect(() => resolveOptions({ ...base, sendEmail: sendEmail() } as never)).toThrow(/must be a function/);
+  });
+
+  it("refuses each option a sender decides for itself, rather than ignoring it", () => {
+    for (const [option, value] of [
+      ["emailProvider", "resend"],
+      ["apiKeyEnv", "SENDGRID_API_KEY"],
+      ["emailFormat", "text"],
+    ] as const) {
+      expect(() => resolveOptions({ ...base, sendEmail, [option]: value })).toThrow(
+        new RegExp(`\`${option}\` cannot be combined with \`sendEmail\``),
+      );
+    }
+  });
+
+  it("reports the conflict first when the provider is not one of ours", () => {
+    // Otherwise the advice is to pass `sendEmail`, to someone who just did.
+    expect(() => resolveOptions({ ...base, sendEmail, emailProvider: "sendgrid" } as never)).toThrow(
+      /`emailProvider` cannot be combined/,
+    );
+  });
+
+  it("reports every conflict at once", () => {
+    expect(() => resolveOptions({ ...base, sendEmail, emailProvider: "xano", apiKeyEnv: "K" })).toThrow(
+      /`emailProvider` cannot.*`apiKeyEnv` cannot/s,
+    );
   });
 });
 
